@@ -2,16 +2,15 @@ function recordData = main(config)
 %% Gaze VEP Experiment: Pilot
 
 %% Define parameters
-
 stim.CONTRAST = config.CONTRAST;  % BASELINE-CONTRAST and BASELINE+CONTRAST
 stim.BASELINE = config.BASELINE;
-BG_COLOR = [stim.BASELINE, stim.BASELINE, stim.BASELINE];   % background color
 
 stim.FIXATION_LOCATION = 25; % percent of width of the screen from left to right
 stim.FIXATION_LENGTH = 30;
 stim.FIXATION_WIDTH = 5;
 stim.FIXATION_LEFT = 25;     % percent of width of the screen from left to right
 stim.FIXATION_RIGHT = 75;    % percent of width of the screen from left to right
+BG_COLOR = [stim.BASELINE, stim.BASELINE, stim.BASELINE];   % background color
 
 % parameters for generating codes
 CODE_LENGTH = floor(config.STIM_LEN * config.REFRESH);
@@ -20,7 +19,6 @@ SEED_2 = 10^2;
 NUM_REPEAT = 10;    % for showing stimuli only
 
 % parameters for drawing text
-vSpacing = 1.5;
 BLACK = [0,0,0];
 text.TEXT_FONT = 'Arial';
 text.FONT_SIZE = 36;
@@ -33,6 +31,7 @@ if strcmp(config.MODE, 'fmc_single_image')
 elseif strcmp(config.MODE, 'fmc_single_text')
     image_screen = imread(config.filename_text);
 end
+
 
 %% ------------------------------------------------------------------------
 %              Generate code sequence
@@ -65,9 +64,6 @@ end
 if ~any(code~=code2) % make sure two codes are not identical
     error('Two codes are identical. Select different random seeds.');
 end
-
-save('code_L.mat','code')
-save('code_R.mat','code2')
 
 %% ------------------------------------------------------------------------
 %              Initialize communication ports (LSL)
@@ -414,6 +410,11 @@ if config.RUN_EXP_2
         fprintf('Trial: %2d, Contrast: %2d, Location: %d\n', ...
             trial, stim.CONTRAST, config.LOCATION_LIST(loc));
         
+        % present break slide and wait one second
+        Screen('DrawTexture',window,baseTexture);
+        Screen('Flip', window);
+        WaitSecs(1);
+        
     end     
     recordData{2} = respMat;
 
@@ -443,20 +444,16 @@ if config.RUN_DEMO % only show stimuli
                 
                 if strcmp(config.MODE, 'fmc_opposite_slow')
                     Screen('DrawTexture',window,noCrossTextures{ code(it_code)+2 });
-                    Screen('DrawingFinished', window);
                     Screen('Flip', window);
                     
                     Screen('DrawTexture',window,baseTexture);
-                    Screen('DrawingFinished', window);
                     Screen('Flip', window);
                     
                 elseif strcmp(config.MODE, 'fmc_binary_slow')
                     Screen('DrawTexture',window,noCrossTextures{ code(it_code)*2+code2(it_code)+1 });
-                    Screen('DrawingFinished', window);
                     Screen('Flip', window);
                     
                     Screen('DrawTexture',window,baseTexture);
-                    Screen('DrawingFinished', window);
                     Screen('Flip', window);
                 end
                 
@@ -690,9 +687,5 @@ for loc_id = 1:length(config.LOCATION_LIST)
     baseFixTexture{2+loc_id} = Screen('MakeTexture',window,uint8( fixation_mask .* base_screen ));
 
 end
-
-
-
-
 
 end
