@@ -4,7 +4,7 @@ clearvars;
 sca;
 
 % add LSL library into path (for marker stream output)
-% addpath(genpath('C:\Users\shawn\Desktop\NSF_BIC\liblsl-Matlab'))
+addpath(genpath('C:\Users\shawn\Desktop\NSF_BIC\liblsl-Matlab'))
 
 
 %% ------------------------------------------------------------------------
@@ -12,38 +12,44 @@ sca;
 %--------------------------------------------------------------------------
 config = [];
 
-% Stimulation modes: 'A_B_C'
-%   A: Stimulation code  {'fmc': frequency-modulated code, 
-%                         'mseq': m-sequence 
-%                         'ssvep': steady-state visual-evoked potential}
-%   B: Split screens     {'binary': two independent codes,
-%                         'opposite': opposite codes,
-%                         'single': single stimuli, for image/text only}
-%   C: Miscellaneous     {'': luminance modulation, 
-%                         'chrome': chromatic modulation,
-%                         'slow': 15 Hz modulation,
-%                         'image': image (single screen only).
-%                         'text': text (single screen only)}
-% Examples (all available options)
-%   'fmc_binary', 'fmc_binary_chrome', 'fmc_binary_slow'
-%   'fmc_opposite', 'fmc_opposite_chrome', 'fmc_opposite_slow'
-%   'mseq_opposite, 'mseq_binary, 
-%   'ssvep'
-%   'fmc_single_image', 'fmc_single_text'
-config.MODE = 'ssvep'; 
+% Stimuli modes - code [A B]
+%   A: Stimulation code     - 0: frequency-modulated code 1: m-sequence 2: ssvep, 3: image, 4: text
+%   B: Modulation modes     - [A==0] 0: normal, 1: opposite codes, 2: chromatical modulation, 3: slow (15Hz) modulation 
 
+% Examples (all available options):
+%   'fmc_normal':           [0 0] 
+%   'fmc_opposite':         [0 1]
+%   'fmc_chrome':           [0 2]
+%   'fmc_slow':             [0 3]
+%   'mseq':                 [1 0]
+%   'ssvep':                [2 0]
+%   'fmc_single_image':     [3 0]   (for demo only)
+%   'fmc_single_text':      [4 0]   (for demo only)
 
-% experiment setting
-config.RUN_EXP_1 = 0;        % run the experiment task 1 - contrast levels
+% setting - experiment tasl 1
+config.RUN_EXP_1 = 1;        % run the experiment task 1 - contrast levels and stimuli modes
+config.MODE = {[0 0], [0 1], [1 0], [0 2]};     % select all the stimuli modes for the experiment
+config.CONTRAST_LIST = [4, 8, 64];  % conditions for experiment task 1
+config.LIST_EACH_MODE = {1:3, 1:3, 1:3, 1:2};   % contrast list index for each mode
+config.NUM_TRIAL_CONTRAST = 10;     % number of trials per contrast level per location (left/right)
+config.BREAK_INTERVAL = 22;        % break every N trials
+
+% setting - experiment tasl 2
 config.RUN_EXP_2 = 0;        % run the experiment task 2 - fixation location
-config.RUN_DEMO = 1;         % run demo - show stimuli only
-
-%
-config.NUM_TRIAL_CONTRAST = 1;     % number of trials per contrast level per location (left/right)
+config.MODE_LOC = [0,0];    % experiment 2
 config.NUM_TRIAL_LOCATION = 2;     % number of trials per contrast level per location (left/right)
-config.STIM_LEN = 2;        % second
-config.DEMO = 1;            % skip synchronization test if in demo mode
-config.ENABLE_LSL = 0;      % enable sending LSL marker stream 
+config.LOCATION_LIST = [25, 40, 60, 75];    % conditions for experiment task 2
+config.CONTRAST = 30;        % [0 127]
+
+% setting - demo experiment stimuli
+config.RUN_DEMO = 0;         % run demo - show stimuli only
+config.MODE_DEMO = [0,2];   % demo 
+config.NUM_REPEAT_DEMO = 5;
+
+% other experiment settings
+config.DEMO = 0;            % skip synchronization test if in demo mode
+config.ENABLE_LSL = 1;      % enable sending LSL marker stream 
+
 
 % screen setting
 config.FULLSCREEN = 1;      % if full screen fails, try specify the window size below
@@ -52,13 +58,11 @@ config.WIN_HEIGHT = 1080;
 config.REFRESH = 60;     % refresh rate in Hz
 
 % contrast level between 
-config.BASELINE = 128;
-config.CONTRAST = 5;     
-config.CONTRAST_LIST = [1, 4, 16, 64, 96];  % conditions for experiment task 1
-config.LOCATION_LIST = [25, 40, 60, 75];    % conditions for experiment task 2
+config.STIM_LEN = 3;        % second
+config.BASELINE = 128;      % [0 255]
 
 % smooth boundary
-config.SMOOTH = 1;          % smooth at boundary of left and right screens
+config.SMOOTH = 1;          % 0: no smooth, 1: linear smooth, 2: probabilistic smooth
 config.SMOOTH_WIDTH = 100;  % smoothing width in pixel
 
 % specify image and text files

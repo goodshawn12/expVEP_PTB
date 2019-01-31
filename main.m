@@ -16,7 +16,7 @@ BG_COLOR = [stim.BASELINE, stim.BASELINE, stim.BASELINE];   % background color
 CODE_LENGTH = floor(config.STIM_LEN * config.REFRESH);
 SEED_1 = 10;
 SEED_2 = 10^2;
-NUM_REPEAT = 10;    % for showing stimuli only
+NUM_REPEAT = config.NUM_REPEAT_DEMO;    % for showing stimuli only
 
 % parameters for drawing text
 BLACK = [0,0,0];
@@ -26,49 +26,46 @@ text.FONT_SIZE = 36;
 
 %% read images
 image_screen = [];
-if strcmp(config.MODE, 'fmc_single_image')
-    image_screen = imread(config.filename_image);
-elseif strcmp(config.MODE, 'fmc_single_text')
-    image_screen = imread(config.filename_text);
+if config.RUN_DEMO
+    if config.MODE_DEMO(1) == 3   % fmc_single_image
+        image_screen = imread(config.filename_image);
+    elseif config.MODE_DEMO(1) == 4   % fmc_single_text
+        image_screen = imread(config.filename_text);
+    end
 end
-
 
 %% ------------------------------------------------------------------------
 %              Generate code sequence
 %--------------------------------------------------------------------------
 
-if strcmp(config.MODE, 'fmc_opposite_slow') || strcmp(config.MODE, 'fmc_binary_slow')
-    % code length for fmc_slow: (2^nBits - 1) * 4
-    nBits = ceil(log2(config.STIM_LEN * config.REFRESH / 4 + 1));   % ensure the code does not repeat for given stimulation length
-    code = gen_code_fmc(nBits,CODE_LENGTH,SEED_1);
-    code2 = gen_code_fmc(nBits,CODE_LENGTH,SEED_2);
-elseif strcmp(config.MODE, 'fmc_binary') || strcmp(config.MODE, 'fmc_binary_chrome') || ...
-        strcmp(config.MODE, 'fmc_opposite') || strcmp(config.MODE, 'fmc_opposite_chrome') || ...
-        strcmp(config.MODE, 'fmc_single_image') || strcmp(config.MODE, 'fmc_single_text')
-    % code length for fmc: (2^nBits - 1) * 2
-    nBits = ceil(log2(config.STIM_LEN * config.REFRESH / 2 + 1));   % ensure the code does not repeat for given stimulation length
-    code = gen_code_fmc(nBits,CODE_LENGTH,SEED_1);
-    code2 = gen_code_fmc(nBits,CODE_LENGTH,SEED_2);
-elseif strcmp(config.MODE, 'mseq_opposite') || strcmp(config.MODE, 'mseq_binary')
-    % code length for m-sequence: (2^nBits - 1)
-    nBits = ceil(log2(config.STIM_LEN * config.REFRESH + 1));   % ensure the code does not repeat for given stimulation length
-    code = gen_msequence(nBits,CODE_LENGTH,SEED_1);
-    code2 = gen_msequence(nBits,CODE_LENGTH,SEED_2);
-elseif strcmp(config.MODE, 'ssvep')
-    % default 10Hz and 12Hz
-    code = gen_code_ssvep(10, CODE_LENGTH, config.REFRESH);
-    code2 = gen_code_ssvep(12, CODE_LENGTH, config.REFRESH);
-else
-    error('Mode input is incorrect');
-end
-if ~any(code~=code2) % make sure two codes are not identical
+% code length for fmc: (2^nBits - 1) * 2
+nBits_fmc = ceil(log2(config.STIM_LEN * config.REFRESH / 2 + 1));   % ensure the code does not repeat for given stimulation length
+code1_fmc = gen_code_fmc(nBits_fmc,CODE_LENGTH,SEED_1);
+code2_fmc = gen_code_fmc(nBits_fmc,CODE_LENGTH,SEED_2);
+
+% code length for fmc_slow: (2^nBits - 1) * 4
+nBits_slow = ceil(log2(config.STIM_LEN * config.REFRESH / 4 + 1));   % ensure the code does not repeat for given stimulation length
+code1_slow = gen_code_fmc(nBits_slow,floor(CODE_LENGTH/2),SEED_1);
+code2_slow = gen_code_fmc(nBits_slow,floor(CODE_LENGTH/2),SEED_2);
+
+% code length for m-sequence: (2^nBits - 1)
+nBits_mseq = ceil(log2(config.STIM_LEN * config.REFRESH + 1));   % ensure the code does not repeat for given stimulation length
+code1_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_1);
+code2_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_2);
+
+% default 10Hz and 12Hz
+code1_ssvep = gen_code_ssvep(10, CODE_LENGTH, config.REFRESH);
+code2_ssvep = gen_code_ssvep(12, CODE_LENGTH, config.REFRESH);
+
+% make sure two codes are not identical
+if ~any(code1_fmc~=code2_fmc) || ~any(code1_slow~=code2_slow) || ~any(code1_mseq~=code2_mseq)
     error('Two codes are identical. Select different random seeds.');
 end
+
 
 %% ------------------------------------------------------------------------
 %              Initialize communication ports (LSL)
 %--------------------------------------------------------------------------
-
 if config.ENABLE_LSL
     % Instantiate LSL
     lslObj = lsl_loadlib();
@@ -82,7 +79,6 @@ end
 %% ------------------------------------------------------------------------
 %              Setup PsychoToolbox and Prepare Stim. Screen
 %--------------------------------------------------------------------------
-
 fprintf('exp_gazevep: Creating windows.\n');
 
 % Setup PTB with some default values
@@ -144,6 +140,10 @@ startMsg_exp1{2} = 'Press Any Key To Begin';
 startExp1Screen = sys_prepInstructionScreen(window, startMsg_exp1, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
 
+restMsg_exp1 = sprintf('Take a rest! Press any key to continue the experiment...');
+restScreen = sys_prepInstructionScreen(window, restMsg_exp1, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+
 endMsg_exp1 = sprintf('End of Task 1. Press any key to continue...');
 endExp1Screen = sys_prepInstructionScreen(window, endMsg_exp1, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
@@ -167,6 +167,17 @@ rateMsg{3} = '(no flicker)                   (very strong flicker)';
 rateScreen = sys_prepInstructionScreen(window, rateMsg, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
 
+rateMsg_2 = cell(1,7);
+rateMsg_2{1} = 'How long you can look at the stimulus comfortably?';
+rateMsg_2{2} = '(Select one option below)';
+rateMsg_2{3} = '(1): 0 sec (not tolerable)          ';
+rateMsg_2{4} = '(2): 1 sec (barely tolerable)     ';
+rateMsg_2{5} = '(3): 3 sec (tolerable)                ';
+rateMsg_2{6} = '(4): 10 sec (quite comfortable)';
+rateMsg_2{7} = '(5): 30 sec (comfortable)         ';
+rateScreen_2 = sys_prepInstructionScreen(window, rateMsg_2, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+
 demoMsg = cell(1,2);
 demoMsg{1} = 'Demo Experimental Stimuli';
 demoMsg{2} = 'Press Any Key To Begin';
@@ -179,29 +190,21 @@ demoScreen = sys_prepInstructionScreen(window, demoMsg, BG_COLOR, ...
 %--------------------------------------------------------------------------
 
 % prepare grey binary background with different contrast levels and fixation locations
-[contrastTextures, locTexture, noCrossTextures, baseFixTexture, baseTexture] = gen_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH);
+[contrastTextures, chromeTextures] = gen_contrast_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH);
 
+% prepare base texture with / without fixation cross at different locations
+[locTexture, noCrossTextures, baseFixTexture, baseTexture] = gen_base_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH);
+
+% image and text
 if ~isempty(image_screen)
-    % image
     vepImage{1} = Screen('MakeTexture',window,image_screen-stim.CONTRAST);
     vepImage{2} = Screen('MakeTexture',window,image_screen+stim.CONTRAST);
-
-    % text
+    
     vepText{1} = Screen('MakeTexture',window,image_screen);
     vepText{2} = Screen('MakeTexture',window,image_screen+2*stim.CONTRAST);
 end
 
 
-% chromatically modulated stimuli
-plus_half_screen_c = (stim.BASELINE+stim.CONTRAST) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
-minus_half_screen_c = (stim.BASELINE-stim.CONTRAST) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
-plus_half_screen_c(:,:,2) = plus_half_screen_c(:,:,2) - 2*stim.CONTRAST;     % flip Green contrast
-minus_half_screen_c(:,:,2) = minus_half_screen_c(:,:,2) + 2*stim.CONTRAST;
-
-chromeTextures{1} = Screen('MakeTexture',window,uint8( cat(2,minus_half_screen_c, minus_half_screen_c) ));   % code 0 / code 0
-chromeTextures{2} = Screen('MakeTexture',window,uint8( cat(2,minus_half_screen_c, plus_half_screen_c) ));    % code 0 / code 1
-chromeTextures{3} = Screen('MakeTexture',window,uint8( cat(2,plus_half_screen_c, minus_half_screen_c) ));    % code 1 / code 0
-chromeTextures{4} = Screen('MakeTexture',window,uint8( cat(2,plus_half_screen_c, plus_half_screen_c) ));     % code 1 / code 1
 
 
 
@@ -210,22 +213,42 @@ chromeTextures{4} = Screen('MakeTexture',window,uint8( cat(2,plus_half_screen_c,
 %----------------------------------------------------------------------
 
 Priority(1);
-recordData = cell(1,2);
+recordData = cell(1,3);
+
+% store stimuli info to output
+out.mode = config.MODE;
+out.code_fmc = {code1_fmc, code2_fmc};
+out.code_slow = {code1_slow, code2_slow};
+out.code_mseq = {code1_mseq, code2_mseq};
+out.code_ssvep = {code1_ssvep, code2_ssvep};
+recordData{1} = out;
+response = [];
 
 %% ----------------------------------------------------------------------
 %             Experimental loop - Task 1: contrast levels
 %----------------------------------------------------------------------
 
-if config.RUN_EXP_1    
+if config.RUN_EXP_1
     
-    disp('Enter Experiment: Task 1 - contrast levels');
+    disp('Enter Experiment: Task 1 - perception test');
     
     % Event marker
     if config.ENABLE_LSL, outlet.push_sample({'Exp1'}); end
+    
+    nModes = length(config.MODE);
+    conditionIndex = [];
+    for mode_it = 1:nModes
+        for cond_it = 1:length(config.LIST_EACH_MODE{mode_it})
+            conditionIndex{end+1} = [mode_it, cond_it];
+        end
+    end
 
-    % obtain randomized trial order for different conditions
-    trial_order = repmat( [1:length(config.CONTRAST_LIST)*2], 1, config.NUM_TRIAL_CONTRAST);
-    trial_order = trial_order( randperm(length(trial_order)) );
+    % obtain trial order, randomized across types of stimuli, contrast levels, and left vs. right fixation
+    nTrial = length(conditionIndex) * config.NUM_TRIAL_CONTRAST * 2;    % 2: left / right locations
+    trial_order = repmat( 1:(length(conditionIndex)*2), 1, config.NUM_TRIAL_CONTRAST);
+    trial_order = trial_order( randperm(nTrial) );
+    loc_order = mod(trial_order-1, 2)+1;
+    cond_order = conditionIndex(ceil(trial_order/2));
     
     % present first screen
     Screen('CopyWindow', startExp1Screen, window);
@@ -233,21 +256,22 @@ if config.RUN_EXP_1
     KbStrokeWait;
     
     respMat = [];
-    respMat.contrast = zeros(1,length(trial_order));
-    respMat.location = zeros(1,length(trial_order));
-    respMat.rate_percept = zeros(1,length(trial_order));
-    respMat.rt = zeros(1,length(trial_order));
-    respMat.mode = config.MODE;
-    respMat.code = {code, code2};
+    respMat.stimuli = cell(1,nTrial);
+    respMat.contrast = zeros(1,nTrial);
+    respMat.location = zeros(1,nTrial);
+    respMat.rate_percept = zeros(1,nTrial);
+    respMat.rate_comfort = zeros(1,nTrial);
+    respMat.rt = zeros(1,nTrial);
     
-    for trial = 1:length(trial_order)
+    for trial = 1:nTrial
         
-        cont_level = mod(trial_order(trial)-1, length(config.CONTRAST_LIST)) + 1;
-        loc = floor( (trial_order(trial)-1) / length(config.CONTRAST_LIST)) + 1;
-
+        mode = config.MODE{cond_order{trial}(1)}; 
+        cont_level = cond_order{trial}(2); 
+        loc = loc_order(trial);
+        
         % Event marker
         if config.ENABLE_LSL, outlet.push_sample({sprintf('Cross_%d',loc)}); end
-
+        
         % present cross for eye fixation
         Screen('DrawTexture', window, baseFixTexture{loc});
         Screen('Flip',window);
@@ -257,38 +281,69 @@ if config.RUN_EXP_1
         
         % Event marker
         if config.ENABLE_LSL
-            outlet.push_sample({sprintf('Stim%d%d%d%d_CT%d_Loc%d', config.MODE_STIM, ...
-                config.MODE_SIDE, config.MODE_COLOR, config.MODE_NORM, config.CONTRAST_LIST(cont_level), loc)}); 
+            outlet.push_sample({sprintf('Stim%d%d_CT%d_Loc%d', ...
+                mode, config.CONTRAST_LIST(cont_level), loc)});
         end
-
-        % present stimuli according to the code sequence
-        for it_code = 1:CODE_LENGTH
-            
-            % Draw it on the back buffer
-            if strcmp(config.MODE, 'fmc_opposite') || strcmp(config.MODE, 'mseq_opposite')
-                Screen('DrawTexture',window,contrastTextures{ cont_level, code(it_code)+2, loc+1 });
-            elseif strcmp(config.MODE, 'fmc_binary') || strcmp(config.MODE, 'mseq_binary') || strcmp(config.MODE, 'ssvep')
-                Screen('DrawTexture',window,contrastTextures{ cont_level, code(it_code)*2+code2(it_code)+1, loc+1 });
+        
+        % present stimuli according to the code sequence and stimulation mode
+        if mode(2) == 3 % fmc with slow (15 Hz) modulation
+            for it_code = 1:length(code1_slow)
+                Screen('DrawTexture',window,contrastTextures{ cont_level, code1_slow(it_code)*2+code2_slow(it_code)+1, loc+1 });
+                Screen('Flip', window);
+                
+                Screen('DrawTexture',window,baseFixTexture{loc});
+                Screen('Flip', window);
+                
+                % break the loop if press ESC key
+                [~, ~, keyCode] = KbCheck;
+                if keyCode(escKey)
+                    Screen('CloseAll');
+                    return;
+                end
             end
-            
-            % Tell PTB no more drawing commands will be issued until the next flip
-            Screen('DrawingFinished', window);
-            
-            % Flip and present the stimuli
-            Screen('Flip', window);
-            
-            % break the loop if press ESC key
-            [~, ~, keyCode] = KbCheck;
-            if keyCode(escKey)
-                Screen('CloseAll');
-                return;
+        elseif mode(2) == 0 % normal (30Hz modulation), grey, independent codes
+            for it_code = 1:CODE_LENGTH
+                if mode(1) == 0     % frequency modulated code
+                    Screen('DrawTexture',window,contrastTextures{ cont_level, code1_fmc(it_code)*2+code2_fmc(it_code)+1, loc+1 });
+                elseif mode(1) == 1     % msequence
+                    Screen('DrawTexture',window,contrastTextures{ cont_level, code1_mseq(it_code)*2+code2_mseq(it_code)+1, loc+1 });
+                elseif mode(1) == 2     % ssvep
+                    Screen('DrawTexture',window,contrastTextures{ cont_level, code1_ssvep(it_code)*2+code2_ssvep(it_code)+1, loc+1 });
+                end
+                
+                % Flip and present the stimuli
+                Screen('Flip', window);
+                
+                % break the loop if press ESC key
+                [~, ~, keyCode] = KbCheck;
+                if keyCode(escKey)
+                    Screen('CloseAll');
+                    return;
+                end
             end
-            
+        else
+            for it_code = 1:CODE_LENGTH
+                if mode(2) == 1 % opposite codes
+                    Screen('DrawTexture',window,contrastTextures{ cont_level, code1_fmc(it_code)+2, loc+1 });
+                elseif mode(2) == 2 % chromatic modulation
+                    Screen('DrawTexture',window,chromeTextures{ cont_level, code1_fmc(it_code)*2+code2_fmc(it_code)+1, loc+1 });
+                end
+                
+                % Flip and present the stimuli
+                Screen('Flip', window);
+                
+                % break the loop if press ESC key
+                [~, ~, keyCode] = KbCheck;
+                if keyCode(escKey)
+                    Screen('CloseAll');
+                    return;
+                end
+            end
         end
         
         % Event marker
         if config.ENABLE_LSL, outlet.push_sample({'Rate'}); end
-
+        
         % present questionnaire
         Screen('CopyWindow', rateScreen, window);
         Screen('Flip', window);
@@ -296,7 +351,6 @@ if config.RUN_EXP_1
         % Check the keyboard
         restTic = tic;
         while true
-            if toc(restTic) > 30, break; end
             [~, ~, keyCode] = KbCheck;
             if keyCode(escKey)
                 ShowCursor;
@@ -309,24 +363,57 @@ if config.RUN_EXP_1
             if keyCode(fourKey), response = 4; break; end
             if keyCode(fiveKey), response = 5; break; end
         end
+        
+        % Event marker
+        if config.ENABLE_LSL, outlet.push_sample({'Rate2'}); end
+        
+        % present questionnaire
+        Screen('CopyWindow', rateScreen_2, window);
+        Screen('Flip', window);
+        
+        % listen to keyboard after half a second to avoid accidental button press
+        WaitSecs(0.5);
 
+        % Check the keyboard
+        while true
+            [~, ~, keyCode] = KbCheck;
+            if keyCode(escKey)
+                ShowCursor;
+                Screen('CloseAll');
+                return;
+            end
+            if keyCode(oneKey), comfortability = 1; break; end
+            if keyCode(twoKey), comfortability = 2; break; end
+            if keyCode(threeKey), comfortability = 3; break; end
+            if keyCode(fourKey), comfortability = 4; break; end
+            if keyCode(fiveKey), comfortability = 5; break; end
+        end
+        
         % Record the trial data
+        respMat.stimuli{trial} = mode;
         respMat.contrast(trial) = config.CONTRAST_LIST(cont_level);
         respMat.location(trial) = loc;
         respMat.rate_percept(trial) = response;
+        respMat.rate_comfort(trial) = comfortability;
         respMat.rt(trial) = toc(restTic);
-                  
-        fprintf('Trial: %2d, Contrast: %2d, Location: %d, Rating: %d, RT: %f\n', ...
-            trial, config.CONTRAST_LIST(cont_level), loc, response, respMat.rt(trial));
+        
+        fprintf('Trial: %2d, Mode: %d%d, Contrast: %2d, Location: %d, Percept: %d, Comfort: %d, RT: %f\n', ...
+            trial, mode, config.CONTRAST_LIST(cont_level), loc, response, comfortability, respMat.rt(trial));
+        
+        if mod(trial,config.BREAK_INTERVAL) == 0 && trial ~= nTrial
+            Screen('CopyWindow', restScreen, window);
+            Screen('Flip', window);
+            KbStrokeWait;
+        end
         
     end
-    recordData{1} = respMat;
+    recordData{2} = respMat;
     
     % end of experiment screen
     Screen('CopyWindow', endExp1Screen, window);
     Screen('Flip', window);
     KbStrokeWait;
-
+    
 end
 
 
@@ -340,7 +427,7 @@ if config.RUN_EXP_2
     
     % Event marker
     if config.ENABLE_LSL, outlet.push_sample({'Exp2'}); end
-
+    
     % obtain randomized trial order for different conditions
     trial_order = repmat( [1:length(config.LOCATION_LIST)], 1, config.NUM_TRIAL_LOCATION);
     trial_order = trial_order( randperm(length(trial_order)) );
@@ -355,16 +442,14 @@ if config.RUN_EXP_2
     respMat.location = zeros(1,length(trial_order));
     respMat.rate_percept = zeros(1,length(trial_order));
     respMat.rt = zeros(1,length(trial_order));
-    respMat.mode = config.MODE;
-    respMat.code = {code, code2};
-
+    
     for trial = 1:length(trial_order)
         
         loc = trial_order(trial);
         
         % Event marker
         if config.ENABLE_LSL, outlet.push_sample({sprintf('Cross_%d',loc)}); end
-
+        
         % present cross for eye fixation
         Screen('DrawTexture', window, baseFixTexture{2+loc});
         Screen('Flip',window);
@@ -374,22 +459,19 @@ if config.RUN_EXP_2
         
         % Event marker
         if config.ENABLE_LSL
-            outlet.push_sample({sprintf('Stim%d%d%d%d_CT%d_Loc%d', config.MODE_STIM, ...
-                config.MODE_SIDE, config.MODE_COLOR, config.MODE_NORM, stim.CONTRAST, config.LOCATION_LIST(loc))});
+            % default to fmc normal independent code modes (to add other modes later)
+            outlet.push_sample({sprintf('Stim%d%d_CT%d_Loc%d', config.MODE_LOC, stim.CONTRAST, config.LOCATION_LIST(loc))});
         end
         
-        % present stimuli according to the code sequence
+        % present stimuli according to the code sequence - normal (30Hz modulation), grey, independent codes
         for it_code = 1:CODE_LENGTH
-            
-            % Draw it on the back buffer
-            if strcmp(config.MODE, 'fmc_opposite') || strcmp(config.MODE, 'mseq_opposite')
-                Screen('DrawTexture',window,locTexture{ loc, code(it_code)+2});
-            elseif strcmp(config.MODE, 'fmc_binary') || strcmp(config.MODE, 'mseq_binary') || strcmp(config.MODE, 'ssvep')
-                Screen('DrawTexture',window,locTexture{ loc, code(it_code)*2+code2(it_code)+1 });
+            if config.MODE_LOC(1) == 0     % frequency modulated code
+                Screen('DrawTexture',window,locTexture{ loc, code1_fmc(it_code)*2+code2_fmc(it_code)+1 });
+            elseif config.MODE_LOC(1) == 1     % msequence
+                Screen('DrawTexture',window,locTexture{ loc, code1_mseq(it_code)*2+code2_mseq(it_code)+1 });
+            elseif config.MODE_LOC(1) == 2     % ssvep
+                Screen('DrawTexture',window,locTexture{ loc, code1_ssvep(it_code)*2+code2_ssvep(it_code)+1 });
             end
-            
-            % Tell PTB no more drawing commands will be issued until the next flip
-            Screen('DrawingFinished', window);
             
             % Flip and present the stimuli
             Screen('Flip', window);
@@ -400,31 +482,30 @@ if config.RUN_EXP_2
                 Screen('CloseAll');
                 return;
             end
-            
         end
         
         % Record the trial data
         respMat.contrast(trial) = stim.CONTRAST;
         respMat.location(trial) = config.LOCATION_LIST(loc);
-                  
-        fprintf('Trial: %2d, Contrast: %2d, Location: %d\n', ...
-            trial, stim.CONTRAST, config.LOCATION_LIST(loc));
+        
+        fprintf('Trial: %2d, Mode: %d%d, Contrast: %2d, Location: %d\n', ...
+            trial, config.MODE_LOC, stim.CONTRAST, config.LOCATION_LIST(loc));
         
         % present break slide and wait one second
         Screen('DrawTexture',window,baseTexture);
         Screen('Flip', window);
         WaitSecs(1);
         
-    end     
-    recordData{2} = respMat;
-
+    end
+    recordData{3} = respMat;
+    
     % end of experiment screen
     Screen('CopyWindow', endExp2Screen, window);
     Screen('Flip', window);
     KbStrokeWait;
     
-end    
-    
+end
+
 
 %% ----------------------------------------------------------------------
 %             Only Present Stimuli
@@ -433,29 +514,49 @@ if config.RUN_DEMO % only show stimuli
     
     disp('Present stimuli only');
     
+    mode = config.MODE_DEMO;
+    
     % present first screen
     Screen('CopyWindow', demoScreen, window);
     Screen('Flip', window);
     KbStrokeWait;
-
-    if strcmp(config.MODE, 'fmc_opposite_slow') || strcmp(config.MODE, 'fmc_binary_slow')
+    
+    if mode(2) == 3
+        for it_rep = 1:NUM_REPEAT
+            for it_code = 1:length(code1_slow)
+                Screen('DrawTexture',window,noCrossTextures{ code1_slow(it_code)*2+code2_slow(it_code)+1 });
+                Screen('Flip', window);
+                
+                Screen('DrawTexture',window,baseTexture);
+                Screen('Flip', window);
+                
+                % break the loop if press ESC key
+                [~, ~, keyCode] = KbCheck;
+                if keyCode(escKey)
+                    Screen('CloseAll');
+                    return;
+                end
+                
+            end
+            
+        end
+    elseif mode(2) == 0 % normal (30Hz modulation), grey, independent codes
         for it_rep = 1:NUM_REPEAT
             for it_code = 1:CODE_LENGTH
-                
-                if strcmp(config.MODE, 'fmc_opposite_slow')
-                    Screen('DrawTexture',window,noCrossTextures{ code(it_code)+2 });
-                    Screen('Flip', window);
-                    
-                    Screen('DrawTexture',window,baseTexture);
-                    Screen('Flip', window);
-                    
-                elseif strcmp(config.MODE, 'fmc_binary_slow')
-                    Screen('DrawTexture',window,noCrossTextures{ code(it_code)*2+code2(it_code)+1 });
-                    Screen('Flip', window);
-                    
-                    Screen('DrawTexture',window,baseTexture);
-                    Screen('Flip', window);
+                if mode(1) == 0     % frequency modulated code
+                    Screen('DrawTexture',window,noCrossTextures{ code1_fmc(it_code)*2+code2_fmc(it_code)+1 });
+                elseif mode(1) == 1     % msequence
+                    Screen('DrawTexture',window,noCrossTextures{ code1_mseq(it_code)*2+code2_mseq(it_code)+1 });
+                elseif mode(1) == 2     % ssvep
+                    Screen('DrawTexture',window,noCrossTextures{ code1_ssvep(it_code)*2+code2_ssvep(it_code)+1 });
+                elseif mode(1) == 3     % image
+                    Screen('DrawTexture',window,vepImage{ code1_fmc(it_code)+1 });
+                elseif mode(1) == 4     % text
+                    Screen('DrawTexture',window,vepText{ code1_fmc(it_code)+1 });
                 end
+                
+                % Flip and present the stimuli
+                Screen('Flip', window);
                 
                 % break the loop if press ESC key
                 [~, ~, keyCode] = KbCheck;
@@ -468,24 +569,11 @@ if config.RUN_DEMO % only show stimuli
     else
         for it_rep = 1:NUM_REPEAT
             for it_code = 1:CODE_LENGTH
-                % Draw it on the back buffer
-                if strcmp(config.MODE, 'fmc_opposite') || strcmp(config.MODE, 'mseq_opposite')
-                    Screen('DrawTexture',window,noCrossTextures{ code(it_code)+2 });
-                elseif strcmp(config.MODE, 'fmc_binary') || strcmp(config.MODE, 'mseq_binary') || strcmp(config.MODE, 'ssvep')
-                    Screen('DrawTexture',window,noCrossTextures{ code(it_code)*2+code2(it_code)+1 });
-                elseif strcmp(config.MODE, 'fmc_opposite_chrome')
-                    Screen('DrawTexture',window,chromeTextures{ code(it_code)+2 });
-                elseif strcmp(config.MODE, 'fmc_binary_chrome')
-                    Screen('DrawTexture',window,chromeTextures{ code(it_code)*2+code2(it_code)+1 });
-                elseif strcmp(config.MODE, 'fmc_single_image')
-                    Screen('DrawTexture',window,vepImage{ code(it_code)+1 });
-                elseif strcmp(config.MODE, 'fmc_single_text')
-                    Screen('DrawTexture',window,vepText{ code(it_code)+1 });
+                if mode(2) == 1 % opposite codes
+                    Screen('DrawTexture',window,noCrossTextures{ code1_fmc(it_code)+2 });
+                elseif mode(2) == 2 % chromatic modulation
+                    Screen('DrawTexture',window,chromeTextures{ 2, code1_fmc(it_code)*2+code2_fmc(it_code)+1, 1 });
                 end
-                
-                
-                % Tell PTB no more drawing commands will be issued until the next flip
-                Screen('DrawingFinished', window);
                 
                 % Flip and present the stimuli
                 Screen('Flip', window);
@@ -496,7 +584,6 @@ if config.RUN_DEMO % only show stimuli
                     Screen('CloseAll');
                     return;
                 end
-                
             end
         end
     end
@@ -504,9 +591,10 @@ end
 
 
 %% closing
-fprintf('ONLINE-BCI: Online BCI has done.\n'); 
+fprintf('ONLINE-BCI: Online BCI has done.\n');
 Priority(0);
 ShowCursor;
+Screen('CloseAll')
 sca
 
 end
@@ -583,10 +671,11 @@ fixation_mask( floor(WINDOW_HEIGHT/2) + [-floor(stim.FIXATION_LENGTH/2):floor(st
 
 end
 
-function [contrastTextures, locTexture, noCrossTextures, baseFixTexture, baseTexture] = gen_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH)
+function [contrastTextures, chromeTextures] = gen_contrast_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH)
 
 % initialize textures for different contrasts
-contrastTextures = cell(length(config.CONTRAST_LIST),4,3);  % 4: number of code combinations, 3: number of fixation locations
+contrastTextures = cell(length(config.CONTRAST_LIST),4,3);  % 4: number of code combinations, 3: number of fixation locations (no, left, right)
+chromeTextures = cell(length(config.CONTRAST_LIST),4,3);
 
 fixation_mask_left = gen_fixation_mask(stim, stim.FIXATION_LEFT, WINDOW_HEIGHT, WINDOW_WIDTH);
 fixation_mask_right = gen_fixation_mask(stim, stim.FIXATION_RIGHT, WINDOW_HEIGHT, WINDOW_WIDTH);
@@ -595,25 +684,21 @@ for contrast_id = 1:length(config.CONTRAST_LIST)
     
     cont_level = config.CONTRAST_LIST(contrast_id);
     
-    % draw the two screen textures needed to flicker
+    % draw the two screen textures needed to flicker - grey stimuli
     plus_half_screen = (stim.BASELINE+cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2));
     minus_half_screen = (stim.BASELINE-cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2));
     
-    % inearly smoothed boundary
-    smooth_filter_ascend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
-    smooth_filter_decend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
-    if config.SMOOTH
-        % config.SMOOTH_WIDTH should be larger than contrast level
-        smooth_width = max(1,floor(config.SMOOTH_WIDTH/2/cont_level));
-        for it = 1:cont_level
-            index_to_smooth = (it-1)*smooth_width+1 : it*smooth_width;
-            smooth_filter_ascend(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth) = it;
-            smooth_filter_ascend(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth) = -it;
-            smooth_filter_decend(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth) = -it;
-            smooth_filter_decend(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth) = it;
-        end
-    end
+    % draw the two screen textures - chromatically modulated stimuli
+    plus_half_screen_c = (stim.BASELINE+cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
+    minus_half_screen_c = (stim.BASELINE-cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
+    plus_half_screen_c(:,:,2) = plus_half_screen_c(:,:,2) - 2*cont_level;     % flip Green contrast
+    minus_half_screen_c(:,:,2) = minus_half_screen_c(:,:,2) + 2*cont_level;
     
+    % mask for smoothing at boundary
+    [smooth_filter_ascend, smooth_filter_decend, smooth_filter_ascend_c, smooth_filter_decend_c] = gen_smooth_mask(config, WINDOW_HEIGHT, WINDOW_WIDTH, cont_level);
+    
+    % grey stimuli
+    % no fixation cross
     contrastTextures{contrast_id, 1, 1} = Screen('MakeTexture',window,uint8( [minus_half_screen, minus_half_screen] ));   % code 0 / code 0
     contrastTextures{contrast_id, 2, 1} = Screen('MakeTexture',window,uint8( [minus_half_screen, plus_half_screen] + smooth_filter_ascend ));    % code 0 / code 1
     contrastTextures{contrast_id, 3, 1} = Screen('MakeTexture',window,uint8( [plus_half_screen, minus_half_screen] + smooth_filter_decend));    % code 1 / code 0
@@ -631,8 +716,30 @@ for contrast_id = 1:length(config.CONTRAST_LIST)
     contrastTextures{contrast_id, 3, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* [plus_half_screen, minus_half_screen] + smooth_filter_decend ));    % code 1 / code 0
     contrastTextures{contrast_id, 4, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* [plus_half_screen, plus_half_screen] ));     % code 1 / code 1
     
+    % chromatic modulated stimuli
+    % no fixation cross
+    chromeTextures{contrast_id, 1, 1} = Screen('MakeTexture',window,uint8( cat(2,minus_half_screen_c, minus_half_screen_c) ));   % code 0 / code 0
+    chromeTextures{contrast_id, 2, 1} = Screen('MakeTexture',window,uint8( cat(2,minus_half_screen_c, plus_half_screen_c) + smooth_filter_ascend_c ));    % code 0 / code 1
+    chromeTextures{contrast_id, 3, 1} = Screen('MakeTexture',window,uint8( cat(2,plus_half_screen_c, minus_half_screen_c) + smooth_filter_decend_c ));    % code 1 / code 0
+    chromeTextures{contrast_id, 4, 1} = Screen('MakeTexture',window,uint8( cat(2,plus_half_screen_c, plus_half_screen_c) ));     % code 1 / code 1
+    
+    % superimpose the fixation cross left
+    chromeTextures{contrast_id, 1, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,minus_half_screen_c, minus_half_screen_c) ));   % code 0 / code 0
+    chromeTextures{contrast_id, 2, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,minus_half_screen_c, plus_half_screen_c) + smooth_filter_ascend_c ));    % code 0 / code 1
+    chromeTextures{contrast_id, 3, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,plus_half_screen_c, minus_half_screen_c) + smooth_filter_decend_c ));    % code 1 / code 0
+    chromeTextures{contrast_id, 4, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,plus_half_screen_c, plus_half_screen_c) ));     % code 1 / code 1
+    
+    % superimpose the fixation cross right
+    chromeTextures{contrast_id, 1, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,minus_half_screen_c, minus_half_screen_c) ));   % code 0 / code 0
+    chromeTextures{contrast_id, 2, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,minus_half_screen_c, plus_half_screen_c) + smooth_filter_ascend_c ));    % code 0 / code 1
+    chromeTextures{contrast_id, 3, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,plus_half_screen_c, minus_half_screen_c) + smooth_filter_decend_c ));    % code 1 / code 0
+    chromeTextures{contrast_id, 4, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,plus_half_screen_c, plus_half_screen_c) ));     % code 1 / code 1
+    
+end
 end
 
+
+function [locTexture, noCrossTextures, baseFixTexture, baseTexture] = gen_base_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH)
 
 % initialize textures for different fixation locations
 locTexture = cell(length(config.LOCATION_LIST),4);  % 4: number of code combinations, 3: number of fixation locations
@@ -641,6 +748,10 @@ noCrossTextures = cell(1,4);
 % draw the two screen textures needed to flicker
 plus_half_screen = (stim.BASELINE+stim.CONTRAST) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2));
 minus_half_screen = (stim.BASELINE-stim.CONTRAST) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2));
+
+% generate fixation mask
+fixation_mask_left = gen_fixation_mask(stim, stim.FIXATION_LEFT, WINDOW_HEIGHT, WINDOW_WIDTH);
+fixation_mask_right = gen_fixation_mask(stim, stim.FIXATION_RIGHT, WINDOW_HEIGHT, WINDOW_WIDTH);
 
 % inearly smoothed boundary
 smooth_filter_ascend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
@@ -682,10 +793,86 @@ for loc_id = 1:length(config.LOCATION_LIST)
     locTexture{loc_id, 2} = Screen('MakeTexture',window,uint8( fixation_mask .* [minus_half_screen, plus_half_screen] + smooth_filter_ascend ));    % code 0 / code 1
     locTexture{loc_id, 3} = Screen('MakeTexture',window,uint8( fixation_mask .* [plus_half_screen, minus_half_screen] + smooth_filter_decend ));    % code 1 / code 0
     locTexture{loc_id, 4} = Screen('MakeTexture',window,uint8( fixation_mask .* [plus_half_screen, plus_half_screen] ));     % code 1 / code 1
-
+    
     % superimpose the fixation on base screen
     baseFixTexture{2+loc_id} = Screen('MakeTexture',window,uint8( fixation_mask .* base_screen ));
+    
+end
+
+
+
+
 
 end
 
+
+
+function [smooth_filter_ascend, smooth_filter_decend, smooth_filter_ascend_c, smooth_filter_decend_c] = gen_smooth_mask(config, WINDOW_HEIGHT, WINDOW_WIDTH, cont_level)
+
+    % smooth mask for grey contrast 
+    smooth_filter_ascend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
+    smooth_filter_decend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
+    if config.SMOOTH == 1 % linearly smoothed boundary
+        % config.SMOOTH_WIDTH should be larger than contrast level
+        smooth_width = max(1,floor(config.SMOOTH_WIDTH/2/cont_level));
+        for it = 1:cont_level
+            index_to_smooth = (it-1)*smooth_width+1 : it*smooth_width;
+            smooth_filter_ascend(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth) = it;
+            smooth_filter_ascend(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth) = -it;
+            smooth_filter_decend(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth) = -it;
+            smooth_filter_decend(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth) = it;
+        end
+    elseif config.SMOOTH == 2 % probablistic smoothed boundary
+        prob_grad = linspace(0,100,config.SMOOTH_WIDTH)/100; % probability gradient
+        randWin = rand(WINDOW_HEIGHT, config.SMOOTH_WIDTH);
+        for it = 1:floor(config.SMOOTH_WIDTH/2)
+            flipIndex = randWin(:,it) < prob_grad(it);
+            smooth_filter_ascend(flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it) = 2*cont_level;
+            smooth_filter_decend(flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it) = 2*cont_level;
+        end
+        for it = 1+floor(config.SMOOTH_WIDTH/2) : config.SMOOTH_WIDTH
+            flipIndex = randWin(:,it) < prob_grad(it);
+            smooth_filter_ascend(~flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it) = -2*cont_level;
+            smooth_filter_decend(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it) = -2*cont_level;
+        end
+    end
+    
+    % smooth mask for color contrast
+    smooth_filter_ascend_c = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2),3);
+    smooth_filter_decend_c = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2),3);
+    if config.SMOOTH == 1 % linearly smoothed boundary
+        % config.SMOOTH_WIDTH should be larger than contrast level
+        smooth_width = max(1,floor(config.SMOOTH_WIDTH/2/cont_level));
+        for it = 1:cont_level
+            index_to_smooth = (it-1)*smooth_width+1 : it*smooth_width;
+            smooth_filter_ascend_c(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth,[1 3]) = it;
+            smooth_filter_ascend_c(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth, [1 3]) = -it;
+            smooth_filter_ascend_c(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth,2) = -it;
+            smooth_filter_ascend_c(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth,2) = it;
+
+            smooth_filter_decend_c(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth, [1 3]) = -it;
+            smooth_filter_decend_c(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth, [1 3]) = it;
+            smooth_filter_decend_c(:,floor(WINDOW_WIDTH/2)-cont_level*smooth_width+index_to_smooth, 2) = it;
+            smooth_filter_decend_c(:,floor(WINDOW_WIDTH/2)+1+cont_level*smooth_width-index_to_smooth, 2) = -it;
+        end
+    elseif config.SMOOTH == 2 % probablistic smoothed boundary
+        prob_grad = linspace(0,100,config.SMOOTH_WIDTH)/100; % probability gradient
+        randWin = rand(WINDOW_HEIGHT, config.SMOOTH_WIDTH);
+        for it = 1:floor(config.SMOOTH_WIDTH/2)
+            flipIndex = randWin(:,it) < prob_grad(it);
+            smooth_filter_ascend_c(flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it, [1 3]) = 2*cont_level;
+            smooth_filter_decend_c(flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it, [1 3]) = 2*cont_level;
+            smooth_filter_ascend_c(flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it, 2) = -2*cont_level;
+            smooth_filter_decend_c(flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it, 2) = -2*cont_level;
+
+        end
+        for it = 1+floor(config.SMOOTH_WIDTH/2) : config.SMOOTH_WIDTH
+            flipIndex = randWin(:,it) < prob_grad(it);
+            smooth_filter_ascend_c(~flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it, [1 3]) = -2*cont_level;
+            smooth_filter_decend_c(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it, [1 3]) = -2*cont_level;
+            smooth_filter_ascend_c(~flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it, 2) = 2*cont_level;
+            smooth_filter_decend_c(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it, 2) = 2*cont_level;
+        end
+    end
+        
 end
