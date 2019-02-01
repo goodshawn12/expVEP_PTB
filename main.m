@@ -140,10 +140,6 @@ startMsg_exp1{2} = 'Press Any Key To Begin';
 startExp1Screen = sys_prepInstructionScreen(window, startMsg_exp1, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
 
-restMsg_exp1 = sprintf('Take a rest! Press any key to continue the experiment...');
-restScreen = sys_prepInstructionScreen(window, restMsg_exp1, BG_COLOR, ...
-    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
-
 endMsg_exp1 = sprintf('End of Task 1. Press any key to continue...');
 endExp1Screen = sys_prepInstructionScreen(window, endMsg_exp1, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
@@ -371,8 +367,8 @@ if config.RUN_EXP_1
         Screen('CopyWindow', rateScreen_2, window);
         Screen('Flip', window);
         
-        % listen to keyboard after half a second to avoid accidental button press
-        WaitSecs(0.5);
+        % listen to keyboard after 0.3 second to avoid accidental button press
+        WaitSecs(0.3);
 
         % Check the keyboard
         while true
@@ -401,13 +397,22 @@ if config.RUN_EXP_1
             trial, mode, config.CONTRAST_LIST(cont_level), loc, response, comfortability, respMat.rt(trial));
         
         if mod(trial,config.BREAK_INTERVAL) == 0 && trial ~= nTrial
+            recordData{2} = respMat; % store behavioral data for each block (in case interrupted)
+            
+            % presetn rest texture
+            restMsg_exp1 = cell(1,2);
+            restMsg_exp1{1} = sprintf('Block %d / %d Completed!', floor(trial/config.BREAK_INTERVAL), floor(nTrial/config.BREAK_INTERVAL));
+            restMsg_exp1{2} = 'Take a rest! Press any key to continue the experiment...';
+            restScreen = sys_prepInstructionScreen(window, restMsg_exp1, BG_COLOR, ...
+                BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+            
             Screen('CopyWindow', restScreen, window);
             Screen('Flip', window);
             KbStrokeWait;
         end
         
     end
-    recordData{2} = respMat;
+    recordData{2} = respMat; % store behavioral data - final
     
     % end of experiment screen
     Screen('CopyWindow', endExp1Screen, window);

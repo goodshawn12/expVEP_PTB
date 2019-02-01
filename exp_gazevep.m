@@ -4,7 +4,7 @@ clearvars;
 sca;
 
 % add LSL library into path (for marker stream output)
-addpath(genpath('C:\Users\shawn\Desktop\NSF_BIC\liblsl-Matlab'))
+addpath(genpath('liblsl-Matlab'))
 
 
 %% ------------------------------------------------------------------------
@@ -53,8 +53,8 @@ config.ENABLE_LSL = 1;      % enable sending LSL marker stream
 
 % screen setting
 config.FULLSCREEN = 1;      % if full screen fails, try specify the window size below
-config.WIN_WIDTH = 1920;    % specify the screen resolution if not full screen (in pixel)
-config.WIN_HEIGHT = 1080;   
+config.WIN_WIDTH = 1600;    % specify the screen resolution if not full screen (in pixel)
+config.WIN_HEIGHT = 1200;   
 config.REFRESH = 60;     % refresh rate in Hz
 
 % contrast level between 
@@ -72,4 +72,4 @@ config.filename_text = 'img/text00.png';
 
 %% run the experiment and record response matrix
 respMat = main(config);
-
+save('respMat.mat','respMat')
