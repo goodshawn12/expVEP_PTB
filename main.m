@@ -166,11 +166,11 @@ rateScreen = sys_prepInstructionScreen(window, rateMsg, BG_COLOR, ...
 rateMsg_2 = cell(1,7);
 rateMsg_2{1} = 'How long you can look at the stimulus comfortably?';
 rateMsg_2{2} = '(Select one option below)';
-rateMsg_2{3} = '(1): 0 sec (not tolerable)          ';
-rateMsg_2{4} = '(2): 1 sec (barely tolerable)     ';
-rateMsg_2{5} = '(3): 3 sec (tolerable)                ';
-rateMsg_2{6} = '(4): 10 sec (quite comfortable)';
-rateMsg_2{7} = '(5): 30 sec (comfortable)         ';
+rateMsg_2{3} = '(1): 0 sec (not tolerable)          ';      % 0
+rateMsg_2{4} = '(2): 3 sec (barely tolerable)     ';        % 1
+rateMsg_2{5} = '(3): 10 sec (tolerable)                ';   % 3
+rateMsg_2{6} = '(4): 30 sec (quite comfortable)';           % 10
+rateMsg_2{7} = '(5): 90 sec (comfortable)         ';        % 30
 rateScreen_2 = sys_prepInstructionScreen(window, rateMsg_2, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
 
@@ -252,7 +252,7 @@ if config.RUN_EXP_1
     KbStrokeWait;
     
     respMat = [];
-    respMat.stimuli = cell(1,nTrial);
+    respMat.stimuli = zeros(1,nTrial);
     respMat.contrast = zeros(1,nTrial);
     respMat.location = zeros(1,nTrial);
     respMat.rate_percept = zeros(1,nTrial);
@@ -386,7 +386,7 @@ if config.RUN_EXP_1
         end
         
         % Record the trial data
-        respMat.stimuli{trial} = mode;
+        respMat.stimuli(trial) = cond_order{trial}(1);
         respMat.contrast(trial) = config.CONTRAST_LIST(cont_level);
         respMat.location(trial) = loc;
         respMat.rate_percept(trial) = response;
@@ -758,20 +758,8 @@ minus_half_screen = (stim.BASELINE-stim.CONTRAST) .* ones(WINDOW_HEIGHT,floor(WI
 fixation_mask_left = gen_fixation_mask(stim, stim.FIXATION_LEFT, WINDOW_HEIGHT, WINDOW_WIDTH);
 fixation_mask_right = gen_fixation_mask(stim, stim.FIXATION_RIGHT, WINDOW_HEIGHT, WINDOW_WIDTH);
 
-% inearly smoothed boundary
-smooth_filter_ascend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
-smooth_filter_decend = zeros(WINDOW_HEIGHT, 2*floor(WINDOW_WIDTH/2));
-if config.SMOOTH
-    % config.SMOOTH_WIDTH should be larger than contrast level
-    smooth_width = max(1,floor(config.SMOOTH_WIDTH/2/stim.CONTRAST));
-    for it = 1:stim.CONTRAST
-        index_to_smooth = (it-1)*smooth_width+1 : it*smooth_width;
-        smooth_filter_ascend(:,floor(WINDOW_WIDTH/2)-stim.CONTRAST*smooth_width+index_to_smooth) = it;
-        smooth_filter_ascend(:,floor(WINDOW_WIDTH/2)+1+stim.CONTRAST*smooth_width-index_to_smooth) = -it;
-        smooth_filter_decend(:,floor(WINDOW_WIDTH/2)-stim.CONTRAST*smooth_width+index_to_smooth) = -it;
-        smooth_filter_decend(:,floor(WINDOW_WIDTH/2)+1+stim.CONTRAST*smooth_width-index_to_smooth) = it;
-    end
-end
+% mask for smoothing at boundary
+[smooth_filter_ascend, smooth_filter_decend, ~, ~] = gen_smooth_mask(config, WINDOW_HEIGHT, WINDOW_WIDTH, stim.CONTRAST);
 
 % draw texture without cross
 noCrossTextures{1} = Screen('MakeTexture',window,uint8( [minus_half_screen, minus_half_screen] ));   % code 0 / code 0
@@ -833,12 +821,12 @@ function [smooth_filter_ascend, smooth_filter_decend, smooth_filter_ascend_c, sm
         for it = 1:floor(config.SMOOTH_WIDTH/2)
             flipIndex = randWin(:,it) < prob_grad(it);
             smooth_filter_ascend(flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it) = 2*cont_level;
-            smooth_filter_decend(flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it) = 2*cont_level;
+            smooth_filter_decend(flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)+1-it) = 2*cont_level;
         end
         for it = 1+floor(config.SMOOTH_WIDTH/2) : config.SMOOTH_WIDTH
             flipIndex = randWin(:,it) < prob_grad(it);
             smooth_filter_ascend(~flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it) = -2*cont_level;
-            smooth_filter_decend(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it) = -2*cont_level;
+            smooth_filter_decend(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)+1-it) = -2*cont_level;
         end
     end
     
@@ -874,9 +862,9 @@ function [smooth_filter_ascend, smooth_filter_decend, smooth_filter_ascend_c, sm
         for it = 1+floor(config.SMOOTH_WIDTH/2) : config.SMOOTH_WIDTH
             flipIndex = randWin(:,it) < prob_grad(it);
             smooth_filter_ascend_c(~flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it, [1 3]) = -2*cont_level;
-            smooth_filter_decend_c(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it, [1 3]) = -2*cont_level;
+            smooth_filter_decend_c(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)+1-it, [1 3]) = -2*cont_level;
             smooth_filter_ascend_c(~flipIndex, floor(WINDOW_WIDTH/2)-floor(config.SMOOTH_WIDTH/2)+it, 2) = 2*cont_level;
-            smooth_filter_decend_c(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)-it, 2) = 2*cont_level;
+            smooth_filter_decend_c(~flipIndex, floor(WINDOW_WIDTH/2)+floor(config.SMOOTH_WIDTH/2)+1-it, 2) = 2*cont_level;
         end
     end
         

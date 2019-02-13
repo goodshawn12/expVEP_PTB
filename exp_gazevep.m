@@ -27,7 +27,7 @@ config = [];
 %   'fmc_single_text':      [4 0]   (for demo only)
 
 % setting - experiment tasl 1
-config.RUN_EXP_1 = 1;        % run the experiment task 1 - contrast levels and stimuli modes
+config.RUN_EXP_1 =  0;        % run the experiment task 1 - contrast levels and stimuli modes
 config.MODE = {[0 0], [0 1], [1 0], [0 2]};     % select all the stimuli modes for the experiment
 config.CONTRAST_LIST = [4, 8, 64];  % conditions for experiment task 1
 config.LIST_EACH_MODE = {1:3, 1:3, 1:3, 1:2};   % contrast list index for each mode
@@ -42,13 +42,13 @@ config.LOCATION_LIST = [25, 40, 60, 75];    % conditions for experiment task 2
 config.CONTRAST = 30;        % [0 127]
 
 % setting - demo experiment stimuli
-config.RUN_DEMO = 0;         % run demo - show stimuli only
-config.MODE_DEMO = [0,2];   % demo 
+config.RUN_DEMO = 1;         % run demo - show stimuli only
+config.MODE_DEMO = [0,0];   % demo 
 config.NUM_REPEAT_DEMO = 5;
 
 % other experiment settings
-config.DEMO = 0;            % skip synchronization test if in demo mode
-config.ENABLE_LSL = 1;      % enable sending LSL marker stream 
+config.DEMO = 1;            % skip synchronization test if in demo mode
+config.ENABLE_LSL = 0;      % enable sending LSL marker stream 
 
 
 % screen setting
@@ -62,7 +62,7 @@ config.STIM_LEN = 3;        % second
 config.BASELINE = 128;      % [0 255]
 
 % smooth boundary
-config.SMOOTH = 1;          % 0: no smooth, 1: linear smooth, 2: probabilistic smooth
+config.SMOOTH = 2;          % 0: no smooth, 1: linear smooth, 2: probabilistic smooth
 config.SMOOTH_WIDTH = 100;  % smoothing width in pixel
 
 % specify image and text files
