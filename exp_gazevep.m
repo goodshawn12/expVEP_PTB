@@ -58,11 +58,11 @@ config.WIN_HEIGHT = 1200;
 config.REFRESH = 60;     % refresh rate in Hz
 
 % contrast level between 
-config.STIM_LEN = 3;        % second
+config.STIM_LEN = 1;        % second
 config.BASELINE = 128;      % [0 255]
 
 % smooth boundary
-config.SMOOTH = 2;          % 0: no smooth, 1: linear smooth, 2: probabilistic smooth
+config.SMOOTH = 1;          % 0: no smooth, 1: linear smooth, 2: probabilistic smooth
 config.SMOOTH_WIDTH = 100;  % smoothing width in pixel
 
 % specify image and text files
