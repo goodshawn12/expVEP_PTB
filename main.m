@@ -5,6 +5,7 @@ function recordData = main(config)
 stim.CONTRAST = config.CONTRAST;  % BASELINE-CONTRAST and BASELINE+CONTRAST
 stim.BASELINE = config.BASELINE;
 
+stim.FIXATION_TIME = 0.8; % sec
 stim.FIXATION_LOCATION = 25; % percent of width of the screen from left to right
 stim.FIXATION_LENGTH = 30;
 stim.FIXATION_WIDTH = 5;
@@ -23,16 +24,20 @@ BLACK = [0,0,0];
 text.TEXT_FONT = 'Arial';
 text.FONT_SIZE = 36;
 
+% Questionnaire:
+config.QUESTION_2 = 0;  % display second question
 
 %% read images
-image_screen = [];
-if config.RUN_DEMO
-    if config.MODE_DEMO(1) == 3   % fmc_single_image
-        image_screen = imread(config.filename_image);
-    elseif config.MODE_DEMO(1) == 4   % fmc_single_text
-        image_screen = imread(config.filename_text);
-    end
-end
+image_screen = imread(config.filename_image);
+
+% image_screen = [];
+% if config.RUN_DEMO
+%     if config.MODE_DEMO(1) == 3   % fmc_single_image
+%         image_screen = imread(config.filename_image);
+%     elseif config.MODE_DEMO(1) == 4   % fmc_single_text
+%         image_screen = imread(config.filename_text);
+%     end
+% end
 
 %% ------------------------------------------------------------------------
 %              Generate code sequence
@@ -53,9 +58,9 @@ nBits_mseq = ceil(log2(config.STIM_LEN * config.REFRESH + 1));   % ensure the co
 code1_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_1);
 code2_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_2);
 
-% default 10Hz and 12Hz
-code1_ssvep = gen_code_ssvep(10, CODE_LENGTH, config.REFRESH);
-code2_ssvep = gen_code_ssvep(12, CODE_LENGTH, config.REFRESH);
+% default 30Hz with phase difference
+code1_ssvep = gen_code_ssvep(30, CODE_LENGTH, config.REFRESH,0);  
+code2_ssvep = gen_code_ssvep(30, CODE_LENGTH, config.REFRESH,1);    % delay 1 frame
 
 % make sure two codes are not identical
 if ~any(code1_fmc~=code2_fmc) || ~any(code1_slow~=code2_slow) || ~any(code1_mseq~=code2_mseq)
@@ -101,19 +106,20 @@ fiveKey = KbName('5%');
 screenNumber = max(Screen('Screens'));
 
 % obtain the window size and open a window
-if isempty(image_screen)
-    if ~config.FULLSCREEN
-        WINDOW_WIDTH = config.WIN_WIDTH;
-        WINDOW_HEIGHT = config.WIN_HEIGHT;
-        [window, windowRect] = Screen('OpenWindow', screenNumber, BG_COLOR, [0, 0, WINDOW_WIDTH, WINDOW_HEIGHT], [], 2);
-    else
-        [WINDOW_WIDTH, WINDOW_HEIGHT] = Screen('WindowSize',screenNumber);
-        [window, windowRect] = Screen('OpenWindow', screenNumber, BG_COLOR, [], [], 2);
-    end
-else
-    [WINDOW_HEIGHT, WINDOW_WIDTH, ~] = size(image_screen);
+if ~config.FULLSCREEN
+    WINDOW_WIDTH = config.WIN_WIDTH;
+    WINDOW_HEIGHT = config.WIN_HEIGHT;
     [window, windowRect] = Screen('OpenWindow', screenNumber, BG_COLOR, [0, 0, WINDOW_WIDTH, WINDOW_HEIGHT], [], 2);
+else
+    [WINDOW_WIDTH, WINDOW_HEIGHT] = Screen('WindowSize',screenNumber);
+    [window, windowRect] = Screen('OpenWindow', screenNumber, BG_COLOR, [], [], 2);
 end
+
+% if ~isempty(image_screen)
+%     [WINDOW_HEIGHT, WINDOW_WIDTH, ~] = size(image_screen);
+%     [window, windowRect] = Screen('OpenWindow', screenNumber, BG_COLOR, [0, 0, WINDOW_WIDTH, WINDOW_HEIGHT], [], 2);
+% end
+
 [centX, centY] = RectCenter(windowRect);
 
 % Flip to clear
@@ -163,6 +169,18 @@ rateMsg{3} = '(no flicker)                   (very strong flicker)';
 rateScreen = sys_prepInstructionScreen(window, rateMsg, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
 
+rateMsg_1 = cell(1,7);
+rateMsg_1{1} = 'Rate your feeling toward the stimuli';
+rateMsg_1{2} = ' ';
+rateMsg_1{3} = '1: Not Perceptible                           ';      % 0
+rateMsg_1{4} = '2: Barely Perceptible / Not Annoying';        % 1
+rateMsg_1{5} = '3: Perceptible / Slightly Annoying   ';   % 3
+rateMsg_1{6} = '4: Quite Strong Stimuli / Annoying   ';           % 10
+rateMsg_1{7} = '5: Strong Stimuli / Very Annoying     ';        % 30
+rateScreen_1 = sys_prepInstructionScreen_align(window, rateMsg_1, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY,1);
+
+
 rateMsg_2 = cell(1,7);
 rateMsg_2{1} = 'How long you can look at the stimulus comfortably?';
 rateMsg_2{2} = '(Select one option below)';
@@ -192,13 +210,15 @@ demoScreen = sys_prepInstructionScreen(window, demoMsg, BG_COLOR, ...
 [locTexture, noCrossTextures, baseFixTexture, baseTexture] = gen_base_textures(window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH);
 
 % image and text
-if ~isempty(image_screen)
-    vepImage{1} = Screen('MakeTexture',window,image_screen-stim.CONTRAST);
-    vepImage{2} = Screen('MakeTexture',window,image_screen+stim.CONTRAST);
-    
-    vepText{1} = Screen('MakeTexture',window,image_screen);
-    vepText{2} = Screen('MakeTexture',window,image_screen+2*stim.CONTRAST);
-end
+imageTexture = gen_image_textures(image_screen, window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH);
+
+% if ~isempty(image_screen)
+%     vepImage{1} = Screen('MakeTexture',window,image_screen-stim.CONTRAST);
+%     vepImage{2} = Screen('MakeTexture',window,image_screen+stim.CONTRAST);
+%     
+%     vepText{1} = Screen('MakeTexture',window,image_screen);
+%     vepText{2} = Screen('MakeTexture',window,image_screen+2*stim.CONTRAST);
+% end
 
 
 
@@ -272,8 +292,8 @@ if config.RUN_EXP_1
         Screen('DrawTexture', window, baseFixTexture{loc});
         Screen('Flip',window);
         
-        % wait one second
-        WaitSecs(1);
+        % wait time
+        WaitSecs(stim.FIXATION_TIME);
         
         % Event marker
         if config.ENABLE_LSL
@@ -304,7 +324,12 @@ if config.RUN_EXP_1
                 elseif mode(1) == 1     % msequence
                     Screen('DrawTexture',window,contrastTextures{ cont_level, code1_mseq(it_code)*2+code2_mseq(it_code)+1, loc+1 });
                 elseif mode(1) == 2     % ssvep
-                    Screen('DrawTexture',window,contrastTextures{ cont_level, code1_ssvep(it_code)*2+code2_ssvep(it_code)+1, loc+1 });
+                    Screen('DrawTexture',window,contrastTextures{ cont_level, code1_ssvep(it_code)+2, loc+1 });
+%                     Screen('DrawTexture',window,contrastTextures{ cont_level, code1_ssvep(it_code)*2+code2_ssvep(it_code)+1, loc+1 });
+                elseif mode(1) == 3     % image
+                    Screen('DrawTexture',window,imageTexture{ cont_level, code1_fmc(it_code)*2+code2_fmc(it_code)+1, loc+1 });
+                elseif mode(1) == 5     % control (static image)
+                    Screen('DrawTexture',window,contrastTextures{ 1, 2, loc+1 });  % always present [0 1] screen with smallest contrast
                 end
                 
                 % Flip and present the stimuli
@@ -341,11 +366,13 @@ if config.RUN_EXP_1
         if config.ENABLE_LSL, outlet.push_sample({'Rate'}); end
         
         % present questionnaire
-        Screen('CopyWindow', rateScreen, window);
+        Screen('CopyWindow', rateScreen_1, window);
         Screen('Flip', window);
         
         % Check the keyboard
         restTic = tic;
+        response = 0;
+        comfortability = 0;
         while true
             [~, ~, keyCode] = KbCheck;
             if keyCode(escKey)
@@ -360,29 +387,31 @@ if config.RUN_EXP_1
             if keyCode(fiveKey), response = 5; break; end
         end
         
-        % Event marker
-        if config.ENABLE_LSL, outlet.push_sample({'Rate2'}); end
-        
-        % present questionnaire
-        Screen('CopyWindow', rateScreen_2, window);
-        Screen('Flip', window);
-        
-        % listen to keyboard after 0.3 second to avoid accidental button press
-        WaitSecs(0.3);
-
-        % Check the keyboard
-        while true
-            [~, ~, keyCode] = KbCheck;
-            if keyCode(escKey)
-                ShowCursor;
-                Screen('CloseAll');
-                return;
+        if config.QUESTION_2
+            % Event marker
+            if config.ENABLE_LSL, outlet.push_sample({'Rate2'}); end
+            
+            % present questionnaire
+            Screen('CopyWindow', rateScreen_2, window);
+            Screen('Flip', window);
+            
+            % listen to keyboard after 0.3 second to avoid accidental button press
+            WaitSecs(0.3);
+            
+            % Check the keyboard
+            while true
+                [~, ~, keyCode] = KbCheck;
+                if keyCode(escKey)
+                    ShowCursor;
+                    Screen('CloseAll');
+                    return;
+                end
+                if keyCode(oneKey), comfortability = 1; break; end
+                if keyCode(twoKey), comfortability = 2; break; end
+                if keyCode(threeKey), comfortability = 3; break; end
+                if keyCode(fourKey), comfortability = 4; break; end
+                if keyCode(fiveKey), comfortability = 5; break; end
             end
-            if keyCode(oneKey), comfortability = 1; break; end
-            if keyCode(twoKey), comfortability = 2; break; end
-            if keyCode(threeKey), comfortability = 3; break; end
-            if keyCode(fourKey), comfortability = 4; break; end
-            if keyCode(fiveKey), comfortability = 5; break; end
         end
         
         % Record the trial data
@@ -460,7 +489,7 @@ if config.RUN_EXP_2
         Screen('Flip',window);
         
         % wait one second
-        WaitSecs(1);
+        WaitSecs(stim.FIXATION_TIME);
         
         % Event marker
         if config.ENABLE_LSL
@@ -499,7 +528,22 @@ if config.RUN_EXP_2
         % present break slide and wait one second
         Screen('DrawTexture',window,baseTexture);
         Screen('Flip', window);
-        WaitSecs(1);
+        WaitSecs(0.5);
+        
+        if mod(trial,config.BREAK_INTERVAL_LOC) == 0 && trial ~= length(trial_order)
+            recordData{3} = respMat; % store behavioral data for each block (in case interrupted)
+            
+            % presetn rest texture
+            restMsg_exp1 = cell(1,2);
+            restMsg_exp1{1} = sprintf('Block %d / %d Completed!', floor(trial/config.BREAK_INTERVAL_LOC), floor(length(trial_order)/config.BREAK_INTERVAL_LOC));
+            restMsg_exp1{2} = 'Take a rest! Press any key to continue the experiment...';
+            restScreen = sys_prepInstructionScreen(window, restMsg_exp1, BG_COLOR, ...
+                BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+            
+            Screen('CopyWindow', restScreen, window);
+            Screen('Flip', window);
+            KbStrokeWait;
+        end
         
     end
     recordData{3} = respMat;
@@ -605,11 +649,12 @@ sca
 end
 
 
-function code = gen_code_ssvep(freq, code_length, refresh)
+function code = gen_code_ssvep(freq, code_length, refresh, delay)
 
 EPSILON = 1e-12;
 
 index = 0:1:code_length-1;
+index = index + delay;  % delay in frame
 tmp = sin(2*pi*freq*(index/refresh)+EPSILON);
 code = (tmp>=0);
 
@@ -868,4 +913,65 @@ function [smooth_filter_ascend, smooth_filter_decend, smooth_filter_ascend_c, sm
         end
     end
         
+end
+
+
+function imageTexture = gen_image_textures(image_screen, window, stim, config, WINDOW_HEIGHT, WINDOW_WIDTH)
+
+% initialize textures for different contrasts
+imageTexture = cell(length(config.CONTRAST_LIST),4,3);
+
+fixation_mask_left = gen_fixation_mask(stim, stim.FIXATION_LEFT, WINDOW_HEIGHT, WINDOW_WIDTH);
+fixation_mask_right = gen_fixation_mask(stim, stim.FIXATION_RIGHT, WINDOW_HEIGHT, WINDOW_WIDTH);
+
+% resize image if the window size does not match
+image_background = zeros(WINDOW_HEIGHT,2*floor(WINDOW_WIDTH/2),3);
+[image_height, image_width, ~] = size(image_screen);
+if image_height >= WINDOW_HEIGHT && image_width >= WINDOW_WIDTH
+    image_background = double(image_screen( ...
+        floor(image_height/2)-floor(WINDOW_HEIGHT/2) + (1:WINDOW_HEIGHT), ...
+        floor(image_width/2)-floor(WINDOW_WIDTH/2) + (1:WINDOW_WIDTH), :));
+elseif image_height < WINDOW_HEIGHT && image_width < WINDOW_WIDTH
+    image_background( ...
+        floor(WINDOW_HEIGHT/2)-floor(image_height/2) + (1:image_height), ...
+        floor(WINDOW_WIDTH/2)-floor(image_width/2) + (1:image_width), :) ...
+        = double(image_screen);
+else
+    error('Please adjust image size');
+end
+
+
+for contrast_id = 1:length(config.CONTRAST_LIST)
+    
+    cont_level = config.CONTRAST_LIST(contrast_id);
+        
+    % draw the two screen textures - chromatically modulated stimuli
+    plus_left_screen_c = (image_background(:,1:floor(WINDOW_WIDTH/2),:)+cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
+    minus_left_screen_c = (image_background(:,1:floor(WINDOW_WIDTH/2),:)-cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
+    plus_right_screen_c = (image_background(:,floor(WINDOW_WIDTH/2)+1:end,:)+cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
+    minus_right_screen_c = (image_background(:,floor(WINDOW_WIDTH/2)+1:end,:)-cont_level) .* ones(WINDOW_HEIGHT,floor(WINDOW_WIDTH/2),3);
+    
+    % mask for smoothing at boundary
+    [~, ~, smooth_filter_ascend_c, smooth_filter_decend_c] = gen_smooth_mask(config, WINDOW_HEIGHT, WINDOW_WIDTH, cont_level);
+    
+    % no fixation cross
+    imageTexture{contrast_id, 1, 1} = Screen('MakeTexture',window,uint8( cat(2,minus_left_screen_c, minus_right_screen_c) ));   % code 0 / code 0
+    imageTexture{contrast_id, 2, 1} = Screen('MakeTexture',window,uint8( cat(2,minus_left_screen_c, plus_right_screen_c) + smooth_filter_ascend_c ));    % code 0 / code 1
+    imageTexture{contrast_id, 3, 1} = Screen('MakeTexture',window,uint8( cat(2,plus_left_screen_c, minus_right_screen_c) + smooth_filter_decend_c ));    % code 1 / code 0
+    imageTexture{contrast_id, 4, 1} = Screen('MakeTexture',window,uint8( cat(2,plus_left_screen_c, plus_right_screen_c) ));     % code 1 / code 1
+    
+    % superimpose the fixation cross left
+    imageTexture{contrast_id, 1, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,minus_left_screen_c, minus_right_screen_c) ));   % code 0 / code 0
+    imageTexture{contrast_id, 2, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,minus_left_screen_c, plus_right_screen_c) + smooth_filter_ascend_c ));    % code 0 / code 1
+    imageTexture{contrast_id, 3, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,plus_left_screen_c, minus_right_screen_c) + smooth_filter_decend_c ));    % code 1 / code 0
+    imageTexture{contrast_id, 4, 2} = Screen('MakeTexture',window,uint8( fixation_mask_left .* cat(2,plus_left_screen_c, plus_right_screen_c) ));     % code 1 / code 1
+    
+    % superimpose the fixation cross right
+    imageTexture{contrast_id, 1, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,minus_left_screen_c, minus_right_screen_c) ));   % code 0 / code 0
+    imageTexture{contrast_id, 2, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,minus_left_screen_c, plus_right_screen_c) + smooth_filter_ascend_c ));    % code 0 / code 1
+    imageTexture{contrast_id, 3, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,plus_left_screen_c, minus_right_screen_c) + smooth_filter_decend_c ));    % code 1 / code 0
+    imageTexture{contrast_id, 4, 3} = Screen('MakeTexture',window,uint8( fixation_mask_right .* cat(2,plus_left_screen_c, plus_right_screen_c) ));     % code 1 / code 1
+    
+end
+
 end
