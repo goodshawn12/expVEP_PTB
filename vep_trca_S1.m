@@ -1,19 +1,20 @@
 % ------------------------------------------------------------------------
 %               TRCA-based VEP detection algorithm
 % -------------------------------------------------------------------------
-function [mean_acc, mu_ci] = vep_trca(epochedEEG,STIM,CONT)
+function vep_trca(epochedEEG)
 
 fprintf('Results of the ensemble TRCA-based method.\n');
 
 % select stimulation pattern:
+STIM = 1;
+CONT = 3;
 numTrial = 10;
 SRATE = 512;
-plot_fig = 0;
 
 % define parameters
-CH = 1:size(epochedEEG{1,1,1,1},1); %[5,10:14,18:20]; % {[12,19], [12,18:20], [5,10:14,18:20], [5,9:15,17:21,24:26], [1:15,17:21,24:26], [1:32]};
-data_len_list = 3.4;   % sec
-data_offset = 0;   % sec
+CH = [5,10:14,18:20]; % {[12,19], [12,18:20], [5,10:14,18:20], [5,9:15,17:21,24:26], [1:15,17:21,24:26], [1:32]};
+data_len_list = 0.1:0.1: 3.2;
+data_offset = 0;
 is_ensemble = 1;    % use ensemble classifier (one classifier for each code seq)
 
 % define conditions for testing
@@ -25,8 +26,8 @@ mu_ci = zeros(length(var_list),2);
 % main loop - cross validation for each condition
 for var_i = 1:length(var_list)
     
-    data_len = var_list(var_i);
-    data_range = floor(data_offset*SRATE) + (1:1:floor(data_len*SRATE));
+    data_len = data_len_list(var_i);
+    data_range = data_offset + (1:1:floor(data_len*SRATE));
     NSAMP = length(data_range);
     
     % extract EEG epochs
@@ -70,11 +71,9 @@ for var_i = 1:length(var_list)
 end
 
 % plot classification results vs. number of channels for each contrast
-if plot_fig
-    figure, plot(var_list, mean_acc,'linewidth',2);
-    xlabel('Training data legnth (sec)'); ylabel('Cross validation accuracy (''%)');
-    set(gca,'fontsize',12)
-    ylim([0 100]);
-end
+figure, plot(data_len_list, mean_acc,'linewidth',2);
+xlabel('Training data length (sec)'); ylabel('Cross validation accuracy (''%)');
+set(gca,'fontsize',12)
+ylim([0 100]);
 
 end

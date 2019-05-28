@@ -1,4 +1,4 @@
-function vep_analysis_script()
+addpath('data');
 
 % load epoched EEG responses to visual stimulation
 
@@ -12,40 +12,32 @@ function vep_analysis_script()
 %           34 (number of channels)
 %           1640 (epoched data samples from -0.2 to 3 sec time locked to
 %           the onset of stimulation, with sampling rate 512)
-load('S1_epochedEEG_exp1.mat');
+tmp = load('S3_epochedEEG_exp1.mat');
+epochedEEG = tmp.epochedEEG_exp1;
 
-% Variable name: stim_data
-%   - 4-dim cell structure: 4 x 3 x 2 x 10 (same as epochedEEG)
-%   - Each cell contains stimuli sequence (2 x 1640) that cooresponds to the epochedEEG trial
-%           2 (1: raw sequence {1,0,-1} interpolated to 512 Hz with zeros in between 60Hz frames
-%             (2: edge sequence {1,0,-1} rising edge and falling edge
-%           1640 time points
-load('S1_stim_data.mat');
+% task-related component analysis
+mean_acc = zeros(4,3);
+for STIM = 1:4
+    for CONT = 1:3
+        [mean_acc(STIM,CONT), ~] = vep_trca(epochedEEG,STIM,CONT);
+    end
+end
 
-% Variable name: stim_seq
-%   - struct with three fields
-%       .fmc (30Hz frequency-modulated msequence)
-%       .fmc_inv (fmc with inverted code for left and right screen)
-%       .mseq (msequence)
-%   - each field consists of 1x2 cell array
-%       {1}: 1x180 (60Hz refresh rate x 3 sec) code sequence of left screen
-%       {2}: 1x180 (60Hz refresh rate x 3 sec) code sequence of right screen
-%   - Note: there is a constant delay between EEG and code-sequence streams
-load('S1_stim_seq.mat');
+figure, plot(mean_acc','linewidth',2);
+legend('FMC','MSEQ','SSVEP','FMC-IMG');
+xlabel('Contrast'); set(gca,'XTick',[1,2,3],'XTickLabel',{'2','4','8'},'fontsize',14);
+ylabel('Cross Validation Accuracy'); ylim([0 100]);
 
+
+% load behavioral results
+tmp_beh = load('respMat_051519S3.mat');
+respMat = tmp_beh.respMat{2};
+vep_behavior(respMat);
+
+%{
 % deconvolution analysis
 vep_deconv(epochedEEG,stim_data)
 
 % % ridge regression analysis
 vep_ridge_regress(epochedEEG,stim_seq)
-
-% task-related component analysis
-vep_trca(epochedEEG)
-
-
-end
-
-
-
-
-
+%}
