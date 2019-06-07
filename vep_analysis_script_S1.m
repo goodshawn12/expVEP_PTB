@@ -1,4 +1,4 @@
-function vep_analysis_script()
+function vep_analysis_script_S1()
 
 % load epoched EEG responses to visual stimulation
 
@@ -40,7 +40,7 @@ vep_deconv(epochedEEG,stim_data)
 vep_ridge_regress(epochedEEG,stim_seq)
 
 % task-related component analysis
-vep_trca(epochedEEG)
+% vep_trca(epochedEEG)
 
 
 end
