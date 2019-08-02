@@ -36,20 +36,23 @@ config.ENABLE_LSL = 1;      % enable sending LSL marker stream
 %   3: 'ssvep' (gray)
 %   4: 'fmc_image' (image)
 
-% setting - experiment tasl 1
+% setting - experiment task 1
 config.RUN_EXP_1 = 1;        % run the experiment task 1 - contrast levels and stimuli modes
 config.MODE = [1, 2, 3, 4];     % select all the stimuli modes for the experiment 
-config.CONTRAST_LIST = [2,8,16];  % conditions for experiment task 1
+config.CONTRAST_LIST = [2, 8, 16];  % conditions for experiment task 1
 config.NUM_TRIAL_CONTRAST = 10;     % number of trials per contrast level per location (left/right)
 config.BREAK_INTERVAL = 12;        % break every N trials
-config.SESS_INTERNAL = 10;         % break every M blocks
+config.SESS_INTERNAL = 5;         % break every M blocks
 config.NUM_IMG = 10;
+
+% setting - calibration - blinking task for event synchronization
+config.RUN_CALIB = 1;
 
 % setting - demo experiment stimuli
 config.RUN_DEMO = 0;         % run demo - show stimuli only
-config.MODE_DEMO = 3;   % demo 
+config.MODE_DEMO = 4;   % demo 
 config.DEMO_CONTRAST_LEVEL = 2;
-config.DEMO_IMAGE = 2;
+config.DEMO_IMAGE = 1;
 config.DEMO_LOCATION = 1;
 config.NUM_REPEAT_DEMO = 5;
 

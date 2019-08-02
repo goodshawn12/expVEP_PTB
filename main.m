@@ -117,6 +117,27 @@ prepareScreen = sys_prepInstructionScreen(window, prepareMsg, BG_COLOR, ...
 Screen('CopyWindow', prepareScreen, window);
 Screen('Flip', window);
 
+startMsg_exp0 = cell(1,3);
+startMsg_exp0{1} = 'Calibration - Blinking Task';
+startMsg_exp0{2} = 'Blink every 2 sec (hint on screen)';
+startMsg_exp0{3} = 'Press Any Key To Begin';
+startExp0Screen = sys_prepInstructionScreen(window, startMsg_exp0, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+
+exp0_2 = {'2'};
+exp0_Screen_2 = sys_prepInstructionScreen(window, exp0_2, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+
+exp0_1 = {'1'};
+exp0_Screen_1 = sys_prepInstructionScreen(window, exp0_1, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+
+exp0_blink = {'Blink'};
+exp0_Screen_blink = sys_prepInstructionScreen(window, exp0_blink, BG_COLOR, ...
+    BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY);
+
+
+
 startMsg_exp1 = cell(1,2);
 startMsg_exp1{1} = 'Experiment - Task 1';
 startMsg_exp1{2} = 'Press Any Key To Begin';
@@ -186,16 +207,50 @@ recordData{1} = out;
 response = [];
 
 %% ----------------------------------------------------------------------
+%             Calibration - blinking task for event synchronization
+%----------------------------------------------------------------------
+
+if config.RUN_CALIB
+    disp('Enter Calibration: Blinking task');
+    
+    % Event marker
+    if config.ENABLE_LSL, outlet.push_sample({'Exp0'}); end
+    
+    % present first screen
+    Screen('CopyWindow', startExp0Screen, window);
+    Screen('Flip', window);
+    KbStrokeWait;
+    
+    for frame_id = 1:30        
+        % prep - 2
+        Screen('CopyWindow', exp0_Screen_2, window);
+        Screen('Flip', window);
+        WaitSecs(0.6667);
+        
+        % prep - 1
+        Screen('CopyWindow', exp0_Screen_1, window);
+        Screen('Flip', window);
+        WaitSecs(0.6667);
+        
+        % Event marker
+        if config.ENABLE_LSL, outlet.push_sample({'Blink'}); end
+        
+        % blink
+        Screen('CopyWindow', exp0_Screen_blink, window);
+        Screen('Flip', window);
+        WaitSecs(0.6667);
+    end
+end
+
+
+
+%% ----------------------------------------------------------------------
 %             Experimental loop - Task 1: contrast levels
 %----------------------------------------------------------------------
 
-% [TODO]
-% 1. Test the image textures and stimulus sequence first
-% 2. Modify the experiment design 
-
 if config.RUN_EXP_1
     
-    disp('Enter Experiment: Task 1 - perception test');
+    disp('Enter Experiment: visual perception task');
     
     % Event marker
     if config.ENABLE_LSL, outlet.push_sample({'Exp1'}); end
