@@ -4,9 +4,8 @@ clearvars;
 sca;
 
 % add LSL library into path (for marker stream output)
-addpath(genpath('liblsl-Matlab'))
+addpath(genpath('C:\Users\shawn\Documents\exp_vep\liblsl-Matlab'))
 addpath('img')
-
 
 %% ------------------------------------------------------------------------
 %              Define Configurations of the Experiment
@@ -29,7 +28,7 @@ config.SMOOTH_WIDTH = 100;  % smoothing width in pixel
 
 % other experiment settings
 config.DEMO = 0;            % skip synchronization test if in demo mode
-config.ENABLE_LSL = 0;      % enable sending LSL marker stream 
+config.ENABLE_LSL = 1;      % enable sending LSL marker stream 
 
 % Stimuli modes:
 %   1: 'fmc' (gray)
@@ -40,16 +39,16 @@ config.ENABLE_LSL = 0;      % enable sending LSL marker stream
 % setting - experiment tasl 1
 config.RUN_EXP_1 = 1;        % run the experiment task 1 - contrast levels and stimuli modes
 config.MODE = [1, 2, 3, 4];     % select all the stimuli modes for the experiment 
-config.CONTRAST_LIST = [4,8,16];  % conditions for experiment task 1
+config.CONTRAST_LIST = [2,8,16];  % conditions for experiment task 1
 config.NUM_TRIAL_CONTRAST = 10;     % number of trials per contrast level per location (left/right)
 config.BREAK_INTERVAL = 12;        % break every N trials
 config.SESS_INTERNAL = 10;         % break every M blocks
 config.NUM_IMG = 10;
 
 % setting - demo experiment stimuli
-config.RUN_DEMO = 1;         % run demo - show stimuli only
-config.MODE_DEMO = 4;   % demo 
-config.DEMO_CONTRAST_LEVEL = 3;
+config.RUN_DEMO = 0;         % run demo - show stimuli only
+config.MODE_DEMO = 3;   % demo 
+config.DEMO_CONTRAST_LEVEL = 2;
 config.DEMO_IMAGE = 2;
 config.DEMO_LOCATION = 1;
 config.NUM_REPEAT_DEMO = 5;
@@ -57,4 +56,4 @@ config.NUM_REPEAT_DEMO = 5;
 
 %% run the experiment and record response matrix
 respMat = main(config);
-save('respMat.mat','respMat')
+save(sprintf('respMat_%d.mat',floor(rand*10000)),'respMat')

@@ -63,7 +63,6 @@ if config.ENABLE_LSL
     outlet = lsl_outlet(info);
 end
 
-
 %% ------------------------------------------------------------------------
 %              Setup PsychoToolbox and Prepare Stim. Screen
 %--------------------------------------------------------------------------
