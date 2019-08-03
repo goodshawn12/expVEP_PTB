@@ -83,6 +83,10 @@ twoKey = KbName('2@');
 threeKey = KbName('3#');
 fourKey = KbName('4$');
 fiveKey = KbName('5%');
+sixKey = KbName('6^');
+sevenKey = KbName('7&');
+eightKey = KbName('8*');
+nineKey = KbName('9(');
 
 % if multiple screens opened, select the last one
 screenNumber = max(Screen('Screens'));
@@ -150,7 +154,7 @@ endExp1Screen = sys_prepInstructionScreen(window, endMsg_exp1, BG_COLOR, ...
 
 
 % Questionanire screen
-rateMsg_1 = cell(1,7);
+rateMsg_1 = cell(1,9);
 rateMsg_1{1} = 'Rate your feeling toward the stimuli';
 rateMsg_1{2} = ' ';
 rateMsg_1{3} = '1: Not Perceptible                           ';      % 0
@@ -158,6 +162,8 @@ rateMsg_1{4} = '2: Barely Perceptible / Not Annoying';        % 1
 rateMsg_1{5} = '3: Perceptible / Slightly Annoying   ';   % 3
 rateMsg_1{6} = '4: Quite Strong Stimuli / Annoying   ';           % 10
 rateMsg_1{7} = '5: Strong Stimuli / Very Annoying     ';        % 30
+rateMsg_1{8} = '6: Very Strong Stimuli / Uncomfortable';        % 30
+rateMsg_1{9} = '7: Extremly Strong Stimuli / Very Uncomfortable';        % 30
 rateScreen_1 = sys_prepInstructionScreen_align(window, rateMsg_1, BG_COLOR, ...
     BLACK, text.TEXT_FONT, text.FONT_SIZE, centX, centY,1);
 
@@ -239,6 +245,13 @@ if config.RUN_CALIB
         Screen('CopyWindow', exp0_Screen_blink, window);
         Screen('Flip', window);
         WaitSecs(0.6667);
+        
+        % break the loop if press ESC key
+        [~, ~, keyCode] = KbCheck;
+        if keyCode(escKey)
+            Screen('CloseAll');
+            return;
+        end
     end
 end
 
@@ -293,7 +306,7 @@ if config.RUN_EXP_1
         
         % Event marker
         if config.ENABLE_LSL
-            outlet.push_sample({sprintf('Stim%d%d_CT%d_Loc%d_Img%d', ...
+            outlet.push_sample({sprintf('Stim%d_CT%d_Loc%d_Img%d', ...
                 mode, config.CONTRAST_LIST(cont_level), loc, image_id)});
         end
         
@@ -346,6 +359,8 @@ if config.RUN_EXP_1
             if keyCode(threeKey), response = 3; break; end
             if keyCode(fourKey), response = 4; break; end
             if keyCode(fiveKey), response = 5; break; end
+            if keyCode(sixKey), response = 6; break; end
+            if keyCode(sevenKey), response = 7; break; end
         end
                 
         % Record the trial data
@@ -356,7 +371,7 @@ if config.RUN_EXP_1
         respMat.rate_percept(trial) = response;
         respMat.rt(trial) = toc(restTic);
         
-        fprintf('Trial: %2d, Mode: %d, Contrast: %2d, Location: %d, Image: %d, Percept: %d, RT: %f\n', ...
+        fprintf('Trial: %d, Mode: %d, Contrast: %d, Location: %d, Image: %d, Percept: %d, RT: %f\n', ...
             trial, mode, config.CONTRAST_LIST(cont_level), loc, image_id, response, respMat.rt(trial));
         
         if mod(trial,config.BREAK_INTERVAL) == 0 && trial ~= nTrial

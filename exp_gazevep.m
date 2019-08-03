@@ -1,3 +1,4 @@
+
 % Clear the workspace
 close all;
 clearvars;
@@ -8,7 +9,7 @@ addpath(genpath('C:\Users\shawn\Documents\exp_vep\liblsl-Matlab'))
 addpath('img')
 
 %% ------------------------------------------------------------------------
-%              Define Configurations of the Experiment
+%              Define Configurations of. the Experiment
 %--------------------------------------------------------------------------
 config = [];
 
