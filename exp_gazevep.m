@@ -34,8 +34,9 @@ config.ENABLE_LSL = 1;      % enable sending LSL marker stream
 % Stimuli modes:
 %   1: 'fmc' (gray)
 %   2: 'mseq' (gray)
-%   3: 'ssvep' (gray)
-%   4: 'fmc_image' (image)
+%   3: 'lf-ssvep' (gray)
+%   4: 'hf-ssvep' (gray)
+%   5: 'ssvep_image' (image)
 
 % setting - experiment task 1
 config.RUN_EXP_1 = 1;        % run the experiment task 1 - contrast levels and stimuli modes
@@ -46,8 +47,11 @@ config.BREAK_INTERVAL = 12;        % break every N trials
 config.SESS_INTERNAL = 5;         % break every M blocks
 config.NUM_IMG = 10;
 
+config.ssvep.lf = [8.5, 9.25, 10, 10.75]; % (Hz) low-freq SSVEP
+config.ssvep.hf = [24, 26, 28, 30];     % (Hz) high-freq SSVEP
+
 % setting - calibration - blinking task for event synchronization
-config.RUN_CALIB = 1;
+config.RUN_CALIB = 0;
 
 % setting - demo experiment stimuli
 config.RUN_DEMO = 0;         % run demo - show stimuli only

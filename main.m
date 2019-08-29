@@ -12,6 +12,9 @@ stim.FIXATION_LEFT = 25;     % percent of width of the screen from left to right
 stim.FIXATION_RIGHT = 75;    % percent of width of the screen from left to right
 BG_COLOR = [stim.BASELINE, stim.BASELINE, stim.BASELINE];   % background color
 
+stim.ssvep_lf = config.ssvep.lf;
+stim.ssvep_hf = config.ssvep.hf;
+
 % parameters for generating codes
 CODE_LENGTH = floor(config.STIM_LEN * config.REFRESH);
 SEED_1 = 10;
@@ -44,11 +47,17 @@ code2_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_2);
 code3_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_3);
 code4_mseq = gen_msequence(nBits_mseq,CODE_LENGTH,SEED_4);
 
-% default 30Hz with phase difference
-code1_ssvep = gen_code_ssvep(9, CODE_LENGTH, config.REFRESH,0);  
-code2_ssvep = gen_code_ssvep(10, CODE_LENGTH, config.REFRESH,1);    % delay 1 frame
-code3_ssvep = gen_code_ssvep(11, CODE_LENGTH, config.REFRESH,2);  
-code4_ssvep = gen_code_ssvep(12, CODE_LENGTH, config.REFRESH,3);    % delay 1 frame
+% low frequency SSVEP with phase difference
+code1_lfssvep = gen_code_ssvep(stim.ssvep_lf(1), CODE_LENGTH, config.REFRESH,0);  
+code2_lfssvep = gen_code_ssvep(stim.ssvep_lf(2), CODE_LENGTH, config.REFRESH,1);    % delay 1 frame
+code3_lfssvep = gen_code_ssvep(stim.ssvep_lf(3), CODE_LENGTH, config.REFRESH,2);  
+code4_lfssvep = gen_code_ssvep(stim.ssvep_lf(4), CODE_LENGTH, config.REFRESH,3);    % delay 1 frame
+
+% high frequency SSVEP with phase difference
+code1_hfssvep = gen_code_ssvep(stim.ssvep_hf(1), CODE_LENGTH, config.REFRESH,0);  
+code2_hfssvep = gen_code_ssvep(stim.ssvep_hf(2), CODE_LENGTH, config.REFRESH,1);    % delay 1 frame
+code3_hfssvep = gen_code_ssvep(stim.ssvep_hf(3), CODE_LENGTH, config.REFRESH,2);  
+code4_hfssvep = gen_code_ssvep(stim.ssvep_hf(4), CODE_LENGTH, config.REFRESH,3);    % delay 1 frame
 
 
 %% ------------------------------------------------------------------------
@@ -208,7 +217,8 @@ recordData = cell(1,3);
 out.mode = config.MODE;
 out.code_fmc = {code1_fmc, code2_fmc, code3_fmc, code4_fmc};
 out.code_mseq = {code1_mseq, code2_mseq, code3_mseq, code4_mseq};
-out.code_ssvep = {code1_ssvep, code2_ssvep, code3_ssvep, code4_ssvep};
+out.code_lfssvep = {code1_lfssvep, code2_lfssvep, code3_lfssvep, code4_lfssvep};
+out.code_hfssvep = {code1_hfssvep, code2_hfssvep, code3_hfssvep, code4_hfssvep};
 recordData{1} = out;
 response = [];
 
@@ -271,7 +281,9 @@ if config.RUN_EXP_1
     nModes = length(config.MODE);
 
     % obtain trial order, randomized across types of stimuli, contrast levels, and left vs. right fixation
-    nTrial = nModes * length(config.CONTRAST_LIST) * 4 * config.NUM_TRIAL_CONTRAST;    % 4: locations
+    nTrialExp = nModes * length(config.CONTRAST_LIST) * 4 * config.NUM_TRIAL_CONTRAST;    % 4: locations
+    nTrialImg = 4 * config.NUM_TRIAL_CONTRAST;  % Image Trials for reward
+    nTrial = nTrialExp + nTrialImg;
     trial_order = randperm(nTrial);
     
     % present first screen
@@ -288,12 +300,19 @@ if config.RUN_EXP_1
     respMat.rt = zeros(1,nTrial);
     
     for trial = 1:nTrial
+        if trial_order(trial) <= nTrialExp  % experiment trial
+            image_id = mod(trial_order(trial)-1, config.NUM_TRIAL_CONTRAST) + 1;
+            loc = mod(ceil(trial_order(trial)/config.NUM_TRIAL_CONTRAST)-1, 4) + 1;
+            cont_level = mod(ceil(trial_order(trial)/config.NUM_TRIAL_CONTRAST/4)-1, length(config.CONTRAST_LIST)) + 1;
+            mode = ceil(trial_order(trial)/config.NUM_TRIAL_CONTRAST/4/length(config.CONTRAST_LIST));
+        else    % image trial (reward trial)
+            tr_image_id = trial_order(trial) - nTrialExp;
+            image_id = mod(tr_image_id-1, config.NUM_TRIAL_CONTRAST) + 1;
+            loc = mod(ceil(tr_image_id/config.NUM_TRIAL_CONTRAST)-1, 4) + 1;
+            cont_level = length(config.CONTRAST_LIST); % strongest contrast
+            mode = 5;
+        end
         
-        image_id = mod(trial_order(trial)-1, config.NUM_TRIAL_CONTRAST) + 1;
-        loc = mod(ceil(trial_order(trial)/config.NUM_TRIAL_CONTRAST)-1, 4) + 1;
-        cont_level = mod(ceil(trial_order(trial)/config.NUM_TRIAL_CONTRAST/4)-1, length(config.CONTRAST_LIST)) + 1;
-        mode = ceil(trial_order(trial)/config.NUM_TRIAL_CONTRAST/4/length(config.CONTRAST_LIST));
-                
         % Event marker
         if config.ENABLE_LSL, outlet.push_sample({sprintf('Cross_%d',loc)}); end
         
@@ -318,12 +337,15 @@ if config.RUN_EXP_1
             elseif mode == 2     % msequence
                 Screen('DrawTexture',window,gray_textures{cont_level,loc, ...
                     code1_mseq(it_code)+code2_mseq(it_code)*2+code3_mseq(it_code)*4+code4_mseq(it_code)*8+1 });
-            elseif mode == 3     % ssvep
+            elseif mode == 3     % low-freq ssvep
                 Screen('DrawTexture',window,gray_textures{cont_level,loc, ...
-                    code1_ssvep(it_code)+code2_ssvep(it_code)*2+code3_ssvep(it_code)*4+code4_ssvep(it_code)*8+1 });
-            elseif mode == 4    % fmc_image
+                    code1_lfssvep(it_code)+code2_lfssvep(it_code)*2+code3_lfssvep(it_code)*4+code4_lfssvep(it_code)*8+1 });
+            elseif mode == 4     % high-freq ssvep
+                Screen('DrawTexture',window,gray_textures{cont_level,loc, ...
+                    code1_hfssvep(it_code)+code2_hfssvep(it_code)*2+code3_hfssvep(it_code)*4+code4_hfssvep(it_code)*8+1 });
+            elseif mode == 5    % ssvep_image
                 Screen('DrawTexture',window,image_textures{cont_level,image_id, ...
-                    code1_fmc(it_code)+code2_fmc(it_code)*2+code3_fmc(it_code)*4+code4_fmc(it_code)*8+1 });
+                    code1_lfssvep(it_code)+code2_lfssvep(it_code)*2+code3_lfssvep(it_code)*4+code4_lfssvep(it_code)*8+1 });
             end
             
             % Flip and present the stimuli
@@ -381,7 +403,7 @@ if config.RUN_EXP_1
                 % present rest texture - long break
                 restMsg_long = cell(1,4);
                 restMsg_long{1} = sprintf('Session %d / %d Completed!', floor(trial/config.BREAK_INTERVAL/config.SESS_INTERNAL), floor(nTrial/config.BREAK_INTERVAL/config.SESS_INTERNAL));
-                restMsg_long{2} = sprintf('Block %d / %d Completed!', floor(trial/config.BREAK_INTERVAL), floor(nTrial/config.BREAK_INTERVAL));
+                restMsg_long{2} = sprintf('Block %d Completed!', floor(trial/config.BREAK_INTERVAL));
                 restMsg_long{3} = 'You deserve a longer break.';
                 restMsg_long{4} = 'Press any key to continue the experiment...';
                 restScreen = sys_prepInstructionScreen(window, restMsg_long, BG_COLOR, ...
@@ -393,7 +415,7 @@ if config.RUN_EXP_1
             else
                 % present rest texture - short break
                 restMsg_exp1 = cell(1,3);
-                restMsg_exp1{1} = sprintf('Block %d / %d Completed!', floor(trial/config.BREAK_INTERVAL), floor(nTrial/config.BREAK_INTERVAL));
+                restMsg_exp1{1} = sprintf('Block %d Completed!', floor(trial/config.BREAK_INTERVAL));
                 restMsg_exp1{2} = 'Take a rest!';
                 restMsg_exp1{3} ='Press any key to continue the experiment...';
                 restScreen = sys_prepInstructionScreen(window, restMsg_exp1, BG_COLOR, ...
@@ -436,12 +458,15 @@ if config.RUN_DEMO % only show stimuli
             elseif mode == 2     % msequence
                 Screen('DrawTexture',window,gray_textures{config.DEMO_CONTRAST_LEVEL,config.DEMO_LOCATION, ...
                     code1_mseq(it_code)+code2_mseq(it_code)*2+code3_mseq(it_code)*4+code4_mseq(it_code)*8+1 });
-            elseif mode == 3     % ssvep
+            elseif mode == 3     % low-freq ssvep
                 Screen('DrawTexture',window,gray_textures{config.DEMO_CONTRAST_LEVEL,config.DEMO_LOCATION, ...
-                    code1_ssvep(it_code)+code2_ssvep(it_code)*2+code3_ssvep(it_code)*4+code4_ssvep(it_code)*8+1 });
-            elseif mode == 4    % fmc_image
+                    code1_lfssvep(it_code)+code2_lfssvep(it_code)*2+code3_lfssvep(it_code)*4+code4_lfssvep(it_code)*8+1 });
+            elseif mode == 4     % high-freq ssvep
+                Screen('DrawTexture',window,gray_textures{config.DEMO_CONTRAST_LEVEL,config.DEMO_LOCATION, ...
+                    code1_hfssvep(it_code)+code2_hfssvep(it_code)*2+code3_hfssvep(it_code)*4+code4_hfssvep(it_code)*8+1 });
+            elseif mode == 5    % ssvep_image
                 Screen('DrawTexture',window,image_textures{config.DEMO_CONTRAST_LEVEL,config.DEMO_IMAGE, ...
-                    code1_fmc(it_code)+code2_fmc(it_code)*2+code3_fmc(it_code)*4+code4_fmc(it_code)*8+1 });
+                    code1_lfssvep(it_code)+code2_lfssvep(it_code)*2+code3_lfssvep(it_code)*4+code4_lfssvep(it_code)*8+1 });
             end
             
             % Flip and present the stimuli
