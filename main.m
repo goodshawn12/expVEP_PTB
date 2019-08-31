@@ -403,7 +403,7 @@ if config.RUN_EXP_1
                 % present rest texture - long break
                 restMsg_long = cell(1,4);
                 restMsg_long{1} = sprintf('Session %d / %d Completed!', floor(trial/config.BREAK_INTERVAL/config.SESS_INTERNAL), floor(nTrial/config.BREAK_INTERVAL/config.SESS_INTERNAL));
-                restMsg_long{2} = sprintf('Block %d Completed!', floor(trial/config.BREAK_INTERVAL));
+                restMsg_long{2} = sprintf('Block %d / %d Completed!', floor(trial/config.BREAK_INTERVAL), floor(nTrial/config.BREAK_INTERVAL));
                 restMsg_long{3} = 'You deserve a longer break.';
                 restMsg_long{4} = 'Press any key to continue the experiment...';
                 restScreen = sys_prepInstructionScreen(window, restMsg_long, BG_COLOR, ...
@@ -415,7 +415,7 @@ if config.RUN_EXP_1
             else
                 % present rest texture - short break
                 restMsg_exp1 = cell(1,3);
-                restMsg_exp1{1} = sprintf('Block %d Completed!', floor(trial/config.BREAK_INTERVAL));
+                restMsg_exp1{1} = sprintf('Block %d / %d Completed!', floor(trial/config.BREAK_INTERVAL), floor(nTrial/config.BREAK_INTERVAL));
                 restMsg_exp1{2} = 'Take a rest!';
                 restMsg_exp1{3} ='Press any key to continue the experiment...';
                 restScreen = sys_prepInstructionScreen(window, restMsg_exp1, BG_COLOR, ...

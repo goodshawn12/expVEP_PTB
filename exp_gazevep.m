@@ -36,18 +36,18 @@ config.ENABLE_LSL = 1;      % enable sending LSL marker stream
 %   2: 'mseq' (gray)
 %   3: 'lf-ssvep' (gray)
 %   4: 'hf-ssvep' (gray)
-%   5: 'ssvep_image' (image)
+%   5: 'ssvep_image' (image): only present the strongest contrast
 
 % setting - experiment task 1
 config.RUN_EXP_1 = 1;        % run the experiment task 1 - contrast levels and stimuli modes
 config.MODE = [1, 2, 3, 4];     % select all the stimuli modes for the experiment 
 config.CONTRAST_LIST = [2, 8, 16];  % conditions for experiment task 1
 config.NUM_TRIAL_CONTRAST = 10;     % number of trials per contrast level per location (left/right)
-config.BREAK_INTERVAL = 12;        % break every N trials
-config.SESS_INTERNAL = 5;         % break every M blocks
+config.BREAK_INTERVAL = 13;        % break every N trials
+config.SESS_INTERNAL = 8;         % break every M blocks
 config.NUM_IMG = 10;
 
-config.ssvep.lf = [8.5, 9.25, 10, 10.75]; % (Hz) low-freq SSVEP
+config.ssvep.lf = [8, 8.67, 9.33, 10]; % (Hz) low-freq SSVEP
 config.ssvep.hf = [24, 26, 28, 30];     % (Hz) high-freq SSVEP
 
 % setting - calibration - blinking task for event synchronization
